@@ -29,7 +29,7 @@ Projemiz belirlenen görev dağılımına göre aşağıdaki rollerle yürütül
 Projenin kilitlenmeden ilerlemesi için aşağıdaki aşamalar sırasıyla tamamlanacaktır:
 
 ### Aşama 1: Temel Atma (Tasarım, Veritabanı ve Planlama)
-* **PM:** GitHub üzerinde projeyi başlatır, tüm görevleri "Issues" kısmına ekler.
+* **PM:** GitHub üzerinde projeyi başlatır.
 * **Tasarımcılar (2):** Logoyu, renkleri belirler; Login ekranı, Yönetici Paneli ve Sakin Paneli için Figma tasarımlarını çizer ve `/design` klasörüne linkler.
 * **Veritabanı Yöneticisi (1):** Tüm özellikleri karşılayacak SQL Master Script'ini yazar, tabloları oluşturur ve `/database` klasörüne yükler.
 
