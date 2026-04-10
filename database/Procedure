@@ -1,0 +1,267 @@
+CREATE PROCEDURE sp_AidatBorcuOlustur
+    @DaireID INT,
+    @KalemID INT,
+    @Tutar DECIMAL(10,2),
+    @DonemYil SMALLINT,
+    @DonemAy TINYINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF @Tutar <= 0
+        THROW 50001, 'Aidat borcu tutarı 0''dan büyük olmalıdır.', 1;
+
+    IF EXISTS (
+        SELECT 1 FROM AIDAT_BORCU 
+        WHERE DaireID = @DaireID AND KalemID = @KalemID 
+          AND DonemYil = @DonemYil AND DonemAy = @DonemAy
+    )
+        THROW 50002, 'Bu daire için aynı kalem ve dönemde zaten borç kaydı var.', 1;
+
+    INSERT INTO AIDAT_BORCU (DaireID, KalemID, Tutar, DonemYil, DonemAy, OdendiMi)
+    VALUES (@DaireID, @KalemID, @Tutar, @DonemYil, @DonemAy, 0);
+END;
+
+CREATE PROCEDURE sp_OdemeYap
+    @SakinID INT,
+    @BorcID INT,
+    @Tutar DECIMAL(10,2),
+    @OdemeTarihi DATE,
+    @OdemeYontemi NVARCHAR(20),
+    @Aciklama NVARCHAR(200) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @BorcTutari DECIMAL(10,2), @OdendiMi BIT;
+
+    SELECT @BorcTutari = Tutar, @OdendiMi = OdendiMi
+    FROM AIDAT_BORCU WHERE BorcID = @BorcID;
+
+    IF @BorcTutari IS NULL
+        THROW 50003, 'Geçersiz borç ID.', 1;
+    IF @OdendiMi = 1
+        THROW 50004, 'Bu borç zaten ödenmiş.', 1;
+    IF @Tutar <= 0
+        THROW 50005, 'Ödeme tutarı 0''dan büyük olmalıdır.', 1;
+
+    BEGIN TRANSACTION;
+    INSERT INTO ODEME (SakinID, BorcID, Tutar, OdemeTarihi, OdemeYontemi, Aciklama)
+    VALUES (@SakinID, @BorcID, @Tutar, @OdemeTarihi, @OdemeYontemi, @Aciklama);
+
+    IF @Tutar >= @BorcTutari
+        UPDATE AIDAT_BORCU SET OdendiMi = 1 WHERE BorcID = @BorcID;
+
+    COMMIT;
+END;
+
+CREATE PROCEDURE sp_ArizaBildir
+    @DaireID INT,
+    @SakinID INT,
+    @Baslik NVARCHAR(100),
+    @Aciklama NVARCHAR(500),
+    @Aciliyet NVARCHAR(10) = 'Orta'
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF @Aciliyet NOT IN ('Düşük', 'Orta', 'Yüksek')
+        THROW 50006, 'Geçersiz aciliyet seviyesi.', 1;
+
+    INSERT INTO ARIZA (DaireID, BildirenSakinID, Baslik, Aciklama, Aciliyet, Durum)
+    VALUES (@DaireID, @SakinID, @Baslik, @Aciklama, @Aciliyet, 'Beklemede');
+END;
+
+CREATE PROCEDURE sp_ArizaAta
+    @ArizaID INT,
+    @YetkiliAdi NVARCHAR(100),
+    @YetkiliTelefon NVARCHAR(15)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @Durum NVARCHAR(20);
+    SELECT @Durum = Durum FROM ARIZA WHERE ArizaID = @ArizaID;
+    IF @Durum NOT IN ('Beklemede', 'Atandı')
+        THROW 50007, 'Sadece ''Beklemede'' veya ''Atandı'' durumdaki arızalar atanabilir.', 1;
+
+    IF NOT EXISTS (SELECT 1 FROM ARIZA_ATAMA WHERE ArizaID = @ArizaID)
+    BEGIN
+        INSERT INTO ARIZA_ATAMA (ArizaID, YetkiliAdi, YetkiliTelefon, AtamaTarihi)
+        VALUES (@ArizaID, @YetkiliAdi, @YetkiliTelefon, GETDATE());
+    END
+    ELSE
+    BEGIN
+        UPDATE ARIZA_ATAMA 
+        SET YetkiliAdi = @YetkiliAdi, YetkiliTelefon = @YetkiliTelefon, AtamaTarihi = GETDATE()
+        WHERE ArizaID = @ArizaID;
+    END
+
+    UPDATE ARIZA SET Durum = 'Atandı' WHERE ArizaID = @ArizaID;
+END;
+
+CREATE PROCEDURE sp_ArizaCozumle
+    @ArizaID INT,
+    @CozumNotu NVARCHAR(500) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF NOT EXISTS (SELECT 1 FROM ARIZA WHERE ArizaID = @ArizaID AND Durum = 'Atandı')
+        THROW 50008, 'Sadece ''Atandı'' durumdaki arızalar çözülebilir.', 1;
+
+    UPDATE ARIZA_ATAMA
+    SET CozumTarihi = GETDATE(), CozumNotu = @CozumNotu
+    WHERE ArizaID = @ArizaID;
+
+    UPDATE ARIZA SET Durum = 'Çözüldü' WHERE ArizaID = @ArizaID;
+END;
+
+CREATE PROCEDURE sp_DuyuruYayinla
+    @Baslik NVARCHAR(200),
+    @Icerik NVARCHAR(MAX),
+    @YayinlayanSakinID INT,
+    @HedefTur NVARCHAR(20),
+    @HedefBlokID INT = NULL,
+    @HedefDaireID INT = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF @HedefTur NOT IN ('Tüm Sakinler', 'Blok', 'Belirli Daireler')
+        THROW 50009, 'Geçersiz hedef türü.', 1;
+
+    DECLARE @DuyuruID INT;
+
+    INSERT INTO DUYURU (Baslik, Icerik, YayinlayanSakinID, HedefTur, HedefBlokID, HedefDaireID)
+    VALUES (@Baslik, @Icerik, @YayinlayanSakinID, @HedefTur, @HedefBlokID, @HedefDaireID);
+
+    SET @DuyuruID = SCOPE_IDENTITY();
+
+    -- Alıcıları otomatik ekle (trigger ile de yapılabilir, ama SP'de de dahil edildi)
+    IF @HedefTur = 'Tüm Sakinler'
+        INSERT INTO DUYURU_ALICI (DuyuruID, SakinID)
+        SELECT @DuyuruID, SakinID FROM SAKIN;
+
+    ELSE IF @HedefTur = 'Blok' AND @HedefBlokID IS NOT NULL
+        INSERT INTO DUYURU_ALICI (DuyuruID, SakinID)
+        SELECT @DuyuruID, s.SakinID
+        FROM SAKIN s
+        JOIN DAIRE d ON s.DaireID = d.DaireID
+        WHERE d.BlokID = @HedefBlokID;
+
+    ELSE IF @HedefTur = 'Belirli Daireler' AND @HedefDaireID IS NOT NULL
+        INSERT INTO DUYURU_ALICI (DuyuruID, SakinID)
+        SELECT @DuyuruID, SakinID
+        FROM SAKIN WHERE DaireID = @HedefDaireID;
+END;
+
+
+CREATE PROCEDURE sp_SakinEkle
+    @DaireID INT,
+    @Ad NVARCHAR(50),
+    @Soyad NVARCHAR(50),
+    @Telefon NVARCHAR(15) = NULL,
+    @EPosta NVARCHAR(100) = NULL,
+    @TCKimlik NVARCHAR(11) = NULL,
+    @MulkDurumu NVARCHAR(10) = 'Sahibi'
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF @MulkDurumu NOT IN ('Sahibi', 'Kiracı')
+        THROW 50010, 'Mülk durumu ''Sahibi'' veya ''Kiracı'' olmalıdır.', 1;
+
+    INSERT INTO SAKIN (DaireID, Ad, Soyad, Telefon, EPosta, TCKimlik, MulkDurumu, AktifMi)
+    VALUES (@DaireID, @Ad, @Soyad, @Telefon, @EPosta, @TCKimlik, @MulkDurumu, 1);
+END;
+
+CREATE PROCEDURE sp_TopluAidatHesapla
+    @DonemYil SMALLINT,
+    @DonemAy TINYINT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @KalemID INT, @Tutar DECIMAL(10,2);
+    DECLARE aidat_cursor CURSOR FOR
+    SELECT KalemID, KalemAdi FROM AIDAT_KALEMI
+    WHERE KalemAdi = 'Asgari Aidat'; -- Varsayılan temel aidat kalemi
+
+    OPEN aidat_cursor;
+    FETCH NEXT FROM aidat_cursor INTO @KalemID, @Tutar;
+
+    IF @@FETCH_STATUS = 0
+    BEGIN
+        INSERT INTO AIDAT_BORCU (DaireID, KalemID, Tutar, DonemYil, DonemAy, OdendiMi)
+        SELECT DaireID, @KalemID, 
+               CASE 
+                   WHEN d.Metrekare < 80 THEN 270.00
+                   WHEN d.Metrekare < 100 THEN 320.00
+                   WHEN d.Metrekare < 120 THEN 360.00
+                   ELSE 400.00 
+               END,
+               @DonemYil, @DonemAy, 0
+        FROM DAIRE d
+        WHERE NOT EXISTS (
+            SELECT 1 FROM AIDAT_BORCU b
+            WHERE b.DaireID = d.DaireID AND b.KalemID = @KalemID
+              AND b.DonemYil = @DonemYil AND b.DonemAy = @DonemAy
+        );
+    END
+
+    CLOSE aidat_cursor;
+    DEALLOCATE aidat_cursor;
+END;
+
+CREATE PROCEDURE sp_BorcDurumuGetir
+    @SakinID INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        b.BorcID,
+        d.BlokID,
+        d.DaireNo,
+        k.KalemAdi,
+        b.Tutar,
+        b.DonemYil,
+        b.DonemAy,
+        b.OdendiMi,
+        o.OdemeTarihi,
+        o.OdemeYontemi
+    FROM AIDAT_BORCU b
+    JOIN DAIRE d ON b.DaireID = d.DaireID
+    JOIN AIDAT_KALEMI k ON b.KalemID = k.KalemID
+    LEFT JOIN ODEME o ON b.BorcID = o.BorcID
+    WHERE d.DaireID IN (SELECT DaireID FROM SAKIN WHERE SakinID = @SakinID)
+    ORDER BY b.DonemYil DESC, b.DonemAy DESC, b.BorcID;
+END;
+
+
+-- Önceki prosedürün sonu (örneğin sp_BorcDurumuGetir):
+-- ... 
+-- END
+-- GO  ← BU ZORUNLU
+
+CREATE PROCEDURE sp_GecikenBorclariListele
+    @GunSayisi INT = 15
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT 
+        s.Ad + ' ' + s.Soyad AS Sakin,
+        d.BlokID,
+        d.DaireNo,
+        k.KalemAdi,
+        b.Tutar,
+        b.DonemYil,
+        b.DonemAy,
+        DATEDIFF(DAY, 
+            DATEFROMPARTS(b.DonemYil, b.DonemAy, 15), -- Ödeme vadesi: ayın 15'i
+            GETDATE()
+        ) AS GecikmeGun
+    FROM AIDAT_BORCU b
+    INNER JOIN DAIRE d ON b.DaireID = d.DaireID
+    INNER JOIN SAKIN s ON d.DaireID = s.DaireID
+    INNER JOIN AIDAT_KALEMI k ON b.KalemID = k.KalemID
+    WHERE 
+        b.OdendiMi = 0
+        AND DATEFROMPARTS(b.DonemYil, b.DonemAy, 15) < DATEADD(DAY, -@GunSayisi, GETDATE())
+    ORDER BY GecikmeGun DESC;
+END
+GO  -- ⬅️ MUTLAKA EKLEYİN
+
