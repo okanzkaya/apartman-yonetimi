@@ -66,6 +66,5 @@ Tüm geliştirmeler **tek bir branch (`main`)** üzerinden yürütülmektedir. K
 
 ## ⚠️ Haberleşme ve Çakışmaları Önleme Kuralları
 
-1. **GitHub Issues ile Görev Kapma:** Mesajlaşma gruplarındaki bilgi kirliliğini önlemek için WhatsApp yerine GitHub kullanıyoruz. Bir kod/tasarım üzerinde çalışmaya başlamadan önce GitHub "Issues" sekmesinden o görevi bulun ve **kendinize atayın (Assignees)**. Diğerleri orada çalıştığınızı görüp o dosyaya dokunmayacaktır.
-2. **Çapraz Dosya Değişikliği Yasaktır:** Kendi klasörünüz (`/frontend`, `/backend` vb.) dışındaki dosyalara müdahale etmeyin. Ortak bir değişiklik gerekiyorsa ilgili ekibe Issue açın.
-3. **Her Oturumda Pull Yapın:** Bilgisayarı açıp projeye her oturduğunuzda, kod yazmaya başlamadan önce mutlaka `git pull origin main` yaparak en güncel projeyi indirin.
+1. **Çapraz Dosya Değişikliği Yasaktır:** Kendi klasörünüz (`/frontend`, `/backend` vb.) dışındaki dosyalara müdahale etmeyin. Ortak bir değişiklik gerekiyorsa ilgili ekibe Issue açın.
+2. **Her Oturumda Pull Yapın:** Bilgisayarı açıp projeye her oturduğunuzda, kod yazmaya başlamadan önce mutlaka `git pull origin main` yaparak en güncel projeyi indirin.
