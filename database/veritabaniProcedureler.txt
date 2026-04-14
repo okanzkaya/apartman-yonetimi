@@ -1,0 +1,65 @@
+CREATE PROCEDURE aidat_arttir
+AS
+BEGIN
+    UPDATE aidat
+    SET miktar = miktar * 1.10;
+END;
+
+
+GO
+
+
+
+CREATE PROCEDURE aidat_hesapla
+AS
+BEGIN
+    UPDATE a
+    SET miktar =
+        CASE
+            WHEN d.kat = 0 THEN 500
+            WHEN d.kat BETWEEN 1 AND 3 THEN 600
+            ELSE 700
+        END
+    FROM aidat a
+    INNER JOIN daire d ON a.daire_id = d.daire_id;
+END;
+
+
+GO
+
+CREATE PROCEDURE apartmana_gore_aidat
+    @apartman_id INT
+AS
+BEGIN
+    UPDATE a
+    SET miktar = miktar + 100
+    FROM aidat a
+    INNER JOIN daire d ON a.daire_id = d.daire_id
+    WHERE d.apartman_id = @apartman_id;
+END;
+
+GO
+
+
+CREATE PROCEDURE odenmeyen_aidatlar
+AS
+BEGIN
+    SELECT * FROM aidat
+    WHERE odendi_mi = 0;
+END;
+
+
+
+
+GO
+
+
+CREATE PROCEDURE ariza_ekle
+    @daire_id INT,
+    @aciklama VARCHAR(255)
+AS
+BEGIN
+    INSERT INTO ariza (daire_id, aciklama, bildirim_tarihi, durum)
+    VALUES (@daire_id, @aciklama, GETDATE(), 'Bekliyor');
+END;
+
