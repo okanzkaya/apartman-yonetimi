@@ -1,0 +1,61 @@
+CREATE TABLE kullanici (
+    kullanici_id INT PRIMARY KEY IDENTITY(1,1),
+    ad VARCHAR(50),
+    soyad VARCHAR(50),
+    email VARCHAR(100),
+    sifre VARCHAR(100)
+);
+
+CREATE TABLE apartman (
+    apartman_id INT PRIMARY KEY IDENTITY(1,1),
+    apartman_adi VARCHAR(100),
+    adres VARCHAR(200)
+);
+
+CREATE TABLE daire (
+    daire_id INT PRIMARY KEY IDENTITY(1,1),
+    apartman_id INT,
+    daire_no INT,
+    kat INT,
+    FOREIGN KEY (apartman_id) REFERENCES apartman(apartman_id)
+);
+
+CREATE TABLE duyuru (
+    duyuru_id INT PRIMARY KEY IDENTITY(1,1),
+    duyuru_icerigi TEXT,
+    duyuru_tarihi DATE,
+    apartman_id INT,
+    FOREIGN KEY (apartman_id) REFERENCES apartman(apartman_id)
+);
+
+CREATE TABLE aidat (
+    aidat_id INT PRIMARY KEY IDENTITY(1,1),
+    daire_id INT,
+    miktar DECIMAL(10,2),
+    ay VARCHAR(20),
+    yil INT,
+    odendi_mi BIT,
+    FOREIGN KEY (daire_id) REFERENCES daire(daire_id)
+);
+
+CREATE TABLE ariza (
+    ariza_id INT PRIMARY KEY IDENTITY(1,1),
+    daire_id INT,
+    aciklama TEXT,
+    bildirim_tarihi DATE,
+    durum VARCHAR(50),
+    FOREIGN KEY (daire_id) REFERENCES daire(daire_id)
+);
+
+CREATE TABLE gelir_gider (
+    id INT PRIMARY KEY IDENTITY(1,1),
+    tur VARCHAR(10),
+    miktar DECIMAL(10,2),
+    aciklama TEXT,
+    tarih DATE,
+    apartman_id INT,
+    FOREIGN KEY (apartman_id) REFERENCES apartman(apartman_id)
+);
+
+
+
