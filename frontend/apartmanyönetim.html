@@ -102,7 +102,7 @@
             <p>API Rehberine Uygun Giriş Paneli</p>
             <div class="input-wrapper">
                 <label>E-posta</label>
-                <input type="email" id="emailField" placeholder="ahmet@gmail.com">
+                <input type="email" id="emailField" placeholder="ahmet@site.com">
             </div>
             <div class="input-wrapper">
                 <label>Şifre</label>
@@ -138,16 +138,15 @@
                 <div class="data-card">
                     <h3>📢 Yeni Duyuru Yayınla (Yönetici)</h3>
                     <br>
-                    <div style="display:grid; grid-template-columns: 1fr 3fr auto; gap:15px; align-items:flex-end">
-                        <div class="input-wrapper" style="margin:0"><label>Apartman ID</label><input type="number" id="apDuyuruId" value="1"></div>
+                    <div style="display:grid; grid-template-columns: 3fr auto; gap:15px; align-items:flex-end">
                         <div class="input-wrapper" style="margin:0"><label>Duyuru İçeriği</label><input type="text" id="txtDuyuru" placeholder="Duyuru metnini yazın..."></div>
                         <button class="btn-action" onclick="core.saveDuyuru()">Yayınla</button>
                     </div>
                 </div>
                 <div class="data-card">
-                    <button class="btn-action" style="margin-bottom:15px; background:#64748b" onclick="core.fetchDuyurular()">Duyuruları Güncelle (ID: 1)</button>
+                    <button class="btn-action" style="margin-bottom:15px; background:#64748b" onclick="core.fetchDuyurular()">Duyuruları Getir / Güncelle</button>
                     <table>
-                        <thead><tr><th>Apartman ID</th><th>Duyuru İçeriği</th></tr></thead>
+                        <thead><tr><th>Başlık</th><th>Duyuru İçeriği</th></tr></thead>
                         <tbody id="duyuru-table"></tbody>
                     </table>
                 </div>
@@ -158,9 +157,9 @@
                     <div style="display: flex; gap: 20px; align-items: center; justify-content: space-between;">
                         <div>
                             <h3>💰 Aidat ve Borç Sorgulama</h3>
-                            <p>Daire ID'ye göre borçları listeler.</p>
+                            <p>Daire ID'ye göre geçmiş borçları listeler.</p>
                         </div>
-                        <button class="btn-action" style="background:var(--success)" onclick="core.calculateAidat()">Toplu Aidat Hesapla (Prosedür)</button>
+                        <button class="btn-action" style="background:var(--success)" onclick="core.calculateAidat()">Toplu Aidat Oluştur (Prosedür)</button>
                     </div>
                     <br>
                     <div style="display: flex; gap: 10px;">
@@ -181,7 +180,7 @@
                     <h3>🛠️ Yeni Arıza Bildir</h3>
                     <br>
                     <div style="display:grid; grid-template-columns: 1fr 3fr auto; gap:15px; align-items:flex-end">
-                        <div class="input-wrapper" style="margin:0"><label>Daire ID</label><input type="number" id="daireArizaId" placeholder="1"></div>
+                        <div class="input-wrapper" style="margin:0"><label>Kategori</label><input type="text" id="txtKategori" placeholder="Elektrik, Su vb."></div>
                         <div class="input-wrapper" style="margin:0"><label>Arıza Açıklaması</label><input type="text" id="txtAriza" placeholder="Sorunu açıklayın..."></div>
                         <button class="btn-action" onclick="core.saveAriza()">Bildir</button>
                     </div>
@@ -189,7 +188,7 @@
                 <div class="data-card">
                     <button class="btn-action" style="margin-bottom:15px; background:#64748b" onclick="core.fetchArizalar()">Tüm Arızaları Listele</button>
                     <table>
-                        <thead><tr><th>Daire ID</th><th>Açıklama</th></tr></thead>
+                        <thead><tr><th>Kategori</th><th>Açıklama & Durum</th></tr></thead>
                         <tbody id="issue-table"></tbody>
                     </table>
                 </div>
@@ -199,6 +198,7 @@
 
     <script>
         const API_BASE = "http://localhost:5000/api";
+        let aktifKullaniciID = 1; 
 
         const core = {
             // 1. GİRİŞ İŞLEMİ (Auth)
@@ -215,40 +215,56 @@
                     const data = await res.json();
 
                     if(res.ok) {
+                        aktifKullaniciID = data.user.KullaniciID;
                         document.getElementById('login-page').style.display = 'none';
                         document.getElementById('admin-panel').style.display = 'flex';
-                        document.getElementById('userNameDisplay').innerText = data.ad || 'Kullanıcı';
-                        document.getElementById('userInitial').innerText = (data.ad || 'U')[0].toUpperCase();
-                        alert(`Giriş Başarılı! Rolünüz: ${data.rol || 'Belirsiz'}`);
+                        document.getElementById('userNameDisplay').innerText = data.user.Ad || 'Kullanıcı';
+                        document.getElementById('userInitial').innerText = (data.user.Ad || 'U')[0].toUpperCase();
+                        alert(`Giriş Başarılı! Rolünüz: ${data.user.Rol}`);
+                        
+                        // Giriş yapınca ekranları otomatik doldur
+                        core.fetchDuyurular();
+                        core.fetchArizalar();
                     } else {
-                        alert("Hata: Bilgiler uyuşmuyor!");
+                        alert("Hata: " + data.message);
                     }
                 } catch (e) {
-                    alert("Backend sunucusuna bağlanılamadı! (localhost:5000)");
+                    alert("Backend sunucusuna bağlanılamadı! Lütfen sunucunun (localhost:5000) açık olduğundan emin olun.");
                 }
             },
 
             // 2. DUYURU SİSTEMİ
             fetchDuyurular: async () => {
-                const apId = 1; // Örnek olarak 1 nolu apartman
-                const res = await fetch(`${API_BASE}/duyurular/${apId}`);
-                const data = await res.json();
-                const tbody = document.getElementById('duyuru-table');
-                tbody.innerHTML = data.map(d => `<tr><td>#${d.apartman_id}</td><td>${d.icerik}</td></tr>`).join('');
+                try {
+                    const res = await fetch(`${API_BASE}/duyurular`);
+                    const data = await res.json();
+                    const tbody = document.getElementById('duyuru-table');
+                    tbody.innerHTML = data.map(d => `<tr><td><b>${d.Baslik}</b></td><td>${d.Icerik} <br><small style="color:#64748b">Ekleyen: ${d.Ad} ${d.Soyad}</small></td></tr>`).join('');
+                } catch (e) {
+                    console.error("Duyurular çekilemedi:", e);
+                }
             },
 
             saveDuyuru: async () => {
-                const apartman_id = document.getElementById('apDuyuruId').value;
                 const icerik = document.getElementById('txtDuyuru').value;
+                if(!icerik) return alert("Lütfen bir içerik yazın.");
+
+                const payload = {
+                    ekleyen_id: aktifKullaniciID,
+                    baslik: "Genel Duyuru", 
+                    icerik: icerik,
+                    kritik_mi: 0
+                };
 
                 const res = await fetch(`${API_BASE}/duyurular`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ icerik, apartman_id: parseInt(apartman_id) })
+                    body: JSON.stringify(payload)
                 });
 
                 if(res.ok) {
-                    alert("Duyuru yayınlandı!");
+                    alert("Duyuru başarıyla yayınlandı!");
+                    document.getElementById('txtDuyuru').value = '';
                     core.fetchDuyurular();
                 }
             },
@@ -256,40 +272,87 @@
             // 3. AİDAT SİSTEMİ
             fetchAidat: async () => {
                 const daireId = document.getElementById('daireIdSorgu').value;
-                if(!daireId) return alert("Daire ID giriniz");
+                if(!daireId) return alert("Lütfen Daire ID giriniz.");
                 
-                const res = await fetch(`${API_BASE}/aidat/${daireId}`);
-                const data = await res.json();
-                const tbody = document.getElementById('aidat-table');
-                // Backend'den gelen veriye göre (tutar, durum vb.) maplenir
-                tbody.innerHTML = data.map(a => `<tr><td>Daire ${daireId}</td><td>${a.tutar || '0'} ₺</td><td><span class="badge warning">Borçlu</span></td></tr>`).join('');
+                try {
+                    const res = await fetch(`${API_BASE}/aidat/${daireId}`);
+                    const data = await res.json();
+                    const tbody = document.getElementById('aidat-table');
+                    
+                    if(data.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="3" style="text-align:center">Bu daireye ait kayıt bulunamadı.</td></tr>`;
+                        return;
+                    }
+
+                    tbody.innerHTML = data.map(a => `
+                        <tr>
+                            <td>Daire ${daireId}</td>
+                            <td>${a.Tutar} ₺</td>
+                            <td>${a.OdemeDurumu ? '<span class="badge success">Ödendi</span>' : '<span class="badge warning">Borçlu</span>'}</td>
+                        </tr>
+                    `).join('');
+                } catch (e) {
+                    console.error("Aidatlar çekilemedi:", e);
+                }
             },
 
             calculateAidat: async () => {
-                const res = await fetch(`${API_BASE}/aidat/hesapla`, { method: 'POST' });
-                if(res.ok) alert("SQL Prosedürü tetiklendi: Aidatlar hesaplandı!");
+                const payload = { donemAy: 5, donemYil: 2026, aidatTutari: 750.00, sonOdemeTarihi: '2026-05-20' };
+                try {
+                    const res = await fetch(`${API_BASE}/aidat/toplu-olustur`, { 
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const data = await res.json();
+                    if(res.ok) alert(data.message);
+                    else alert("Hata: " + (data.error || "Aidatlar zaten oluşturulmuş olabilir."));
+                } catch (e) {
+                    alert("İşlem başarısız.");
+                }
             },
 
             // 4. ARIZA SİSTEMİ
             fetchArizalar: async () => {
-                const res = await fetch(`${API_BASE}/ariza`);
-                const data = await res.json();
-                const tbody = document.getElementById('issue-table');
-                tbody.innerHTML = data.map(i => `<tr><td>Daire ${i.daire_id}</td><td>${i.aciklama}</td></tr>`).join('');
+                try {
+                    const res = await fetch(`${API_BASE}/ariza`);
+                    const data = await res.json();
+                    const tbody = document.getElementById('issue-table');
+                    
+                    tbody.innerHTML = data.map(i => {
+                        let badgeClass = i.Durum === 'Çözüldü' ? 'success' : (i.Durum === 'Beklemede' ? 'danger' : 'info');
+                        return `<tr>
+                                    <td><b>${i.Kategori || 'Genel'}</b></td>
+                                    <td>${i.Aciklama} <br><span class="badge ${badgeClass}" style="margin-top:5px; display:inline-block">${i.Durum}</span></td>
+                                </tr>`;
+                    }).join('');
+                } catch (e) {
+                    console.error("Arızalar çekilemedi:", e);
+                }
             },
 
             saveAriza: async () => {
-                const daire_id = document.getElementById('daireArizaId').value;
+                const kategori = document.getElementById('txtKategori').value || "Genel";
                 const aciklama = document.getElementById('txtAriza').value;
+                
+                if(!aciklama) return alert("Lütfen arıza açıklaması girin.");
+
+                const payload = {
+                    bildiren_id: aktifKullaniciID,
+                    kategori: kategori,
+                    baslik: "Kullanıcı Bildirimi",
+                    aciklama: aciklama
+                };
 
                 const res = await fetch(`${API_BASE}/ariza`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ daire_id: parseInt(daire_id), aciklama })
+                    body: JSON.stringify(payload)
                 });
 
                 if(res.ok) {
-                    alert("Arıza bildirildi!");
+                    alert("Arıza başarıyla bildirildi!");
+                    document.getElementById('txtAriza').value = '';
                     core.fetchArizalar();
                 }
             },
@@ -309,7 +372,8 @@
         // Sayfa dışına tıklandığında menü kapatma
         window.onclick = (e) => {
             if (!e.target.closest('.user-profile')) {
-                document.getElementById('userMenu').classList.remove('active');
+                const userMenu = document.getElementById('userMenu');
+                if(userMenu) userMenu.classList.remove('active');
             }
         };
     </script>
