@@ -7,9 +7,13 @@ router.post('/login', async (req, res) => {
     try {
         const pool = await poolPromise;
         const result = await pool.request()
-            .input('email', sql.VarChar, email)
-            .input('sifre', sql.VarChar, sifre)
-            .query('SELECT kullanici_id, ad, soyad, rol, daire_id FROM kullanici WHERE email = @email AND sifre = @sifre');
+            .input('email', sql.NVarChar, email)
+            .input('sifre', sql.NVarChar, sifre)
+            .query(`
+                SELECT KullaniciID, Ad, Soyad, Rol, DaireID 
+                FROM Kullanicilar 
+                WHERE Email = @email AND SifreHash = @sifre AND Durum = 1
+            `);
 
         if (result.recordset.length > 0) {
             res.json({ success: true, user: result.recordset[0] });
