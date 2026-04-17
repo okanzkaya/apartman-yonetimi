@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ELİT YÖNETİM | Admin Paneli</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="login-page">
+        <div class="login-card">
+            <h2>ELİT YÖNETİM</h2>
+            <p>Yönetici Paneline Giriş Yapın</p>
+            <div class="input-wrapper">
+                <label>E-posta</label>
+                <input type="email" id="emailField" class="form-control" placeholder="admin@elityonetim.com">
+            </div>
+            <div class="input-wrapper">
+                <label>Şifre</label>
+                <input type="password" id="passField" class="form-control" placeholder="****">
+            </div>
+            <button class="btn-action" onclick="core.authenticate()">Giriş Yap</button>
+        </div>
+    </div>
+
+    <div id="admin-panel">
+        <aside class="sidebar">
+            <h1>ELİT YÖNETİM</h1>
+            <ul class="nav-menu">
+                <li class="nav-item active" onclick="core.switchTab('dashboard', this)"><i class="fas fa-chart-line"></i> Finansal Özet</li>
+                <li class="nav-item" onclick="core.switchTab('kayitlar', this)"><i class="fas fa-users"></i> Daire & Sakinler</li>
+                <li class="nav-item" onclick="core.switchTab('aidatlar', this)"><i class="fas fa-credit-card"></i> Aidat & Borçlar</li>
+                <li class="nav-item" onclick="core.switchTab('duyurular', this)"><i class="fas fa-bullhorn"></i> Duyurular</li>
+                <li class="nav-item" onclick="core.switchTab('arizalar', this)"><i class="fas fa-tools"></i> Arıza & Talep (NLP)</li>
+                <li class="nav-item" onclick="core.switchTab('randevular', this)"><i class="fas fa-calendar-alt"></i> Rezervasyonlar</li>
+                <li class="nav-item" onclick="core.switchTab('bakimlar', this)"><i class="fas fa-wrench"></i> Planlı Bakımlar</li>
+                <li class="nav-item" onclick="core.switchTab('dokumanlar', this)"><i class="fas fa-file-pdf"></i> Belgeler</li>
+                <li class="nav-item" onclick="core.switchTab('giriscikis', this)"><i class="fas fa-shield-alt"></i> Güvenlik Logları</li>
+            </ul>
+        </aside>
+
+        <main class="main-view">
+            <header>
+                <h1 id="view-title">Finansal Özet</h1>
+                <div class="user-profile" onclick="core.toggleUserMenu()">
+                    <div class="user-avatar"><i class="fas fa-user-tie"></i></div>
+                    <div>
+                        <span id="userNameDisplay" style="font-weight: 600; font-size: 0.9rem; display:block;">Yönetici Paneli</span>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">Tam Yetki</span>
+                    </div>
+                    <div class="user-menu" id="userMenu">
+                        <div class="menu-item" onclick="core.logout()"><i class="fas fa-sign-out-alt"></i> Çıkış Yap</div>
+                    </div>
+                </div>
+            </header>
+
+            <section id="dashboard" class="view-section active">
+                <div class="dashboard-grid">
+                    <div class="data-card" style="margin:0; text-align:center; background: linear-gradient(135deg, var(--primary), #2a3c8c); color:white;">
+                        <h4 style="color:var(--bg-light)">Toplam Kasa (Gelir)</h4>
+                        <h2 style="font-size:2.2rem; margin-top:10px; color:var(--accent)">85.400₺</h2>
+                    </div>
+                    <div class="data-card" style="margin:0; text-align:center; border-bottom: 4px solid var(--danger);">
+                        <h4 style="color:var(--text-muted)">Toplam Gider</h4>
+                        <h2 style="font-size:2.2rem; margin-top:10px; color:var(--danger)">-32.150₺</h2>
+                    </div>
+                    <div class="data-card" style="margin:0; text-align:center; border-bottom: 4px solid var(--info);">
+                        <h4 style="color:var(--text-muted)">Net Bakiye</h4>
+                        <h2 style="font-size:2.2rem; margin-top:10px; color:var(--primary)">53.250₺</h2>
+                    </div>
+                </div>
+                <div class="data-card">
+                    <h3><i class="fas fa-list"></i> Son Finansal Hareketler</h3>
+                    <table class="data-table">
+                        <thead><tr><th>Tarih</th><th>Açıklama</th><th>Tip</th><th>Tutar</th><th>İşlem</th></tr></thead>
+                        <tbody id="gelir-gider-table"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="kayitlar" class="view-section">
+                <div class="data-card">
+                    <h3><i class="fas fa-user-plus"></i> Yeni Daire / Sakin Kaydı</h3>
+                    <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr auto; align-items: end; margin-top:15px;">
+                        <div class="input-wrapper" style="margin:0"><label>Blok</label><input type="text" id="txtBlok" class="form-control" placeholder="A"></div>
+                        <div class="input-wrapper" style="margin:0"><label>Kapı No</label><input type="number" id="txtKapiNo" class="form-control" placeholder="15"></div>
+                        <div class="input-wrapper" style="margin:0"><label>Ad Soyad</label><input type="text" id="txtSakinAd" class="form-control" placeholder="Kişi Adı"></div>
+                        <div class="input-wrapper" style="margin:0"><label>Telefon</label><input type="text" id="txtTelefon" class="form-control" placeholder="0555..."></div>
+                        <button class="btn-action" style="width: auto;" onclick="core.saveKayit()">Kaydet</button>
+                    </div>
+                </div>
+                <div class="data-card">
+                    <table class="data-table">
+                        <thead><tr><th>Blok/Daire</th><th>Sakin Adı</th><th>Telefon</th><th>Durum</th><th>İşlem</th></tr></thead>
+                        <tbody id="kayit-table"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="aidatlar" class="view-section">
+                <div class="data-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3><i class="fas fa-coins"></i> Aidat Belirleme</h3>
+                        <button class="btn-action" style="width:auto; background:var(--success)" onclick="core.calculateAidat()">Toplu Aidat Oluştur</button>
+                    </div>
+                    <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr 1fr; margin-top:15px;">
+                        <div class="input-wrapper" style="margin:0"><label>Dönem Ayı</label><input type="number" class="form-control" placeholder="Örn: 5"></div>
+                        <div class="input-wrapper" style="margin:0"><label>Dönem Yılı</label><input type="number" class="form-control" placeholder="2026"></div>
+                        <div class="input-wrapper" style="margin:0"><label>Belirlenen Tutar (₺)</label><input type="number" class="form-control" placeholder="850"></div>
+                    </div>
+                </div>
+
+                <div class="data-card">
+                    <div style="display: flex; gap: 10px; border-bottom: 2px solid var(--border); padding-bottom: 15px;">
+                        <button class="inner-tab-btn active" onclick="core.switchInnerTab('tab-tum-daireler', this)">Genel Durum</button>
+                        <button class="inner-tab-btn" onclick="core.switchInnerTab('tab-borclar', this)">Borçlu Daireler Takibi</button>
+                    </div>
+                    <div id="tab-tum-daireler" class="inner-tab-content active">
+                        <table class="data-table">
+                            <thead><tr><th>Daire</th><th>Sakin</th><th>Tutar</th><th>Durum</th><th>İşlem</th></tr></thead>
+                            <tbody id="aidat-table-all"></tbody>
+                        </table>
+                    </div>
+                    <div id="tab-borclar" class="inner-tab-content">
+                        <table class="data-table">
+                            <thead><tr><th>Daire</th><th>Sakin</th><th>Geciken Dönem</th><th>Toplam Borç</th><th>İşlem</th></tr></thead>
+                            <tbody id="aidat-table-debts"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="duyurular" class="view-section">
+                <div class="data-card">
+                    <h3><i class="fas fa-pen"></i> Yeni Duyuru Yayınla</h3>
+                    <div style="display:flex; gap:15px; align-items:flex-end; margin-top:15px;">
+                        <div class="input-wrapper" style="margin:0; flex:1;"><input type="text" id="txtDuyuru" class="form-control" placeholder="Sakinlerin göreceği duyuruyu yazın..."></div>
+                        <button class="btn-action" style="width:auto;" onclick="core.saveDuyuru()">Panoya As</button>
+                    </div>
+                </div>
+                <div class="data-card">
+                    <table class="data-table">
+                        <thead><tr><th>Tarih</th><th>İçerik</th><th>İşlem</th></tr></thead>
+                        <tbody id="duyuru-table"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="arizalar" class="view-section">
+                <div class="data-card"><h3><i class="fas fa-robot"></i> Gelen Arıza Biletleri (NLP Destekli)</h3></div>
+                <div class="data-card">
+                    <table class="data-table">
+                        <thead><tr><th>Daire</th><th>Kategori</th><th>Şikayet Metni</th><th>NLP Analizi</th><th>İşlem</th></tr></thead>
+                        <tbody id="issue-table"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="randevular" class="view-section">
+                <div class="data-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3><i class="far fa-calendar-alt"></i> Günlük Tesis Ajandası</h3>
+                        <div style="display: flex; gap: 10px;">
+                            <select id="agendaTesis" class="form-control" style="margin:0; width:auto;" onchange="core.loadAgenda()">
+                                <option value="Spor Salonu">Spor Salonu</option>
+                                <option value="Açık Havuz">Açık Havuz</option>
+                            </select>
+                            <input type="date" id="agendaTarih" class="form-control" style="margin:0; width:auto;" onchange="core.loadAgenda()">
+                        </div>
+                    </div>
+                    <div id="agenda-grid" class="dashboard-grid" style="grid-template-columns: repeat(4, 1fr);"></div>
+                </div>
+                <div class="data-card">
+                    <h3>Gelen Randevu Talepleri</h3>
+                    <table class="data-table">
+                        <thead><tr><th>Tesis</th><th>Sakin (Daire)</th><th>Tarih & Saat</th><th>Durum</th><th>İşlem</th></tr></thead>
+                        <tbody id="randevu-table"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="bakimlar" class="view-section">
+                <div class="data-card">
+                    <h3><i class="fas fa-plus-circle"></i> Planlı Bakım Ekle</h3>
+                    <div class="dashboard-grid" style="grid-template-columns: 2fr 1.5fr 2fr 1fr auto; align-items: end; margin-top:15px;">
+                        <div class="input-wrapper" style="margin:0"><label>Tür</label><input type="text" id="txtBakimAd" class="form-control" placeholder="Asansör"></div>
+                        <div class="input-wrapper" style="margin:0"><label>İlk Tarih</label><input type="date" id="txtBakimTarih" class="form-control"></div>
+                        <div class="input-wrapper" style="margin:0; display:flex; gap:8px; align-items:flex-end;">
+                            <div style="flex:1"><label>Tekrar</label><input type="number" id="txtBakimFrekans" class="form-control" min="1" value="1"></div>
+                            <div style="flex:1.5"><label>&nbsp;</label><select id="selBakimBirim" class="form-control"><option value="Yok">Tek Sefer</option><option value="Gün">Gün</option><option value="Ay">Ay</option><option value="Yıl">Yıl</option></select></div>
+                        </div>
+                        <div class="input-wrapper" style="margin:0"><label>Maliyet</label><input type="number" id="txtBakimMaliyet" class="form-control" placeholder="₺"></div>
+                        <button class="btn-action" style="width:auto;" onclick="core.saveBakim()">İşle</button>
+                    </div>
+                </div>
+                <div class="data-card">
+                    <table class="data-table">
+                        <thead><tr><th>Tür</th><th>Son Yapılan</th><th>Maliyet</th><th>Periyot</th><th>SONRAKİ BAKIM</th><th>Durum</th><th>İşlem</th></tr></thead>
+                        <tbody id="bakim-table"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="dokumanlar" class="view-section">
+                <div class="data-card">
+                    <h3><i class="fas fa-cloud-upload-alt"></i> Karar Defteri ve Fatura Deposu</h3>
+                    <div style="display:flex; gap:15px; align-items:flex-end; margin-top:15px;">
+                        <div class="input-wrapper" style="margin:0; flex:2;"><label>Belge Adı</label><input type="text" id="txtBelgeAd" class="form-control" placeholder="Elektrik Faturası"></div>
+                        <div class="input-wrapper" style="margin:0; flex:1;"><label>Dosya Seç</label><input type="file" class="form-control" style="padding: 9px;"></div>
+                        <button class="btn-action" style="width:auto;" onclick="core.uploadDokuman()">Buluta Yükle</button>
+                    </div>
+                </div>
+                <div class="data-card">
+                    <table class="data-table">
+                        <thead><tr><th>Belge Adı</th><th>Yükleme Tarihi</th><th>İşlem</th></tr></thead>
+                        <tbody id="dokuman-table"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="giriscikis" class="view-section">
+                <div class="data-card">
+                    <div style="display: flex; justify-content: space-between; align-items:center; margin-bottom: 20px;">
+                        <h3><i class="fas fa-video"></i> Güvenlik / Geçiş Logları</h3>
+                        <input type="text" class="form-control" placeholder="🔍 Loglarda ara..." onkeyup="core.filterTable(this, 'giris-table')" style="margin:0; width:250px;">
+                    </div>
+                    <table class="data-table" id="table-giris">
+                        <thead><tr><th>Zaman</th><th>Kişi / Araç</th><th>Tip</th><th>Nokta</th><th>İşlem</th></tr></thead>
+                        <tbody id="giris-table"></tbody>
+                    </table>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <div id="toast">İşlem Başarılı!</div>
+
+    <script src="app.js"></script>
+</body>
+</html>
