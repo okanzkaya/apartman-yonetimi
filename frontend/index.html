@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elite Apartman Yönetim Sistemi</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="login-page">
+        <div class="login-card">
+            <h2>Elite Yönetim</h2>
+            <p>API Rehberine Uygun Giriş Paneli</p>
+            <div class="input-wrapper">
+                <label>E-posta</label>
+                <input type="email" id="emailField" placeholder="ahmet@site.com">
+            </div>
+            <div class="input-wrapper">
+                <label>Şifre</label>
+                <input type="password" id="passField" placeholder="****">
+            </div>
+            <button class="btn-action" style="width:100%" onclick="core.authenticate()">Oturum Aç</button>
+        </div>
+    </div>
+
+    <div id="admin-panel">
+        <aside class="sidebar">
+            <div class="sidebar-brand">ELİTE YÖNETİM</div>
+            <ul class="nav-menu">
+                <li class="nav-item active" onclick="core.switchTab('duyurular', this)">📢 Duyurular</li>
+                <li class="nav-item" onclick="core.switchTab('aidatlar', this)">💰 Aidat Sorgula</li>
+                <li class="nav-item" onclick="core.switchTab('arizalar', this)">🛠️ Arıza Sistemi</li>
+            </ul>
+        </aside>
+
+        <main class="main-view">
+            <header>
+                <h1 id="view-title">Duyurular</h1>
+                <div class="user-profile" onclick="core.toggleUserMenu()">
+                    <div class="user-avatar" id="userInitial">U</div>
+                    <span id="userNameDisplay" style="font-weight: 600; font-size: 0.9rem;">Kullanıcı</span>
+                    <div class="user-menu" id="userMenu">
+                        <div class="menu-item" onclick="core.logout()">🔒 Çıkış Yap</div>
+                    </div>
+                </div>
+            </header>
+
+            <section id="duyurular" class="view-section active">
+                <div class="data-card">
+                    <h3>📢 Yeni Duyuru Yayınla (Yönetici)</h3>
+                    <br>
+                    <div style="display:grid; grid-template-columns: 3fr auto; gap:15px; align-items:flex-end">
+                        <div class="input-wrapper" style="margin:0"><label>Duyuru İçeriği</label><input type="text" id="txtDuyuru" placeholder="Duyuru metnini yazın..."></div>
+                        <button class="btn-action" onclick="core.saveDuyuru()">Yayınla</button>
+                    </div>
+                </div>
+                <div class="data-card">
+                    <button class="btn-action" style="margin-bottom:15px; background:#64748b" onclick="core.fetchDuyurular()">Duyuruları Getir / Güncelle</button>
+                    <table>
+                        <thead><tr><th>Başlık</th><th>Duyuru İçeriği</th></tr></thead>
+                        <tbody id="duyuru-table"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="aidatlar" class="view-section">
+                <div class="data-card">
+                    <div style="display: flex; gap: 20px; align-items: center; justify-content: space-between;">
+                        <div>
+                            <h3>💰 Aidat ve Borç Sorgulama</h3>
+                            <p>Daire ID'ye göre geçmiş borçları listeler.</p>
+                        </div>
+                        <button class="btn-action" style="background:var(--success)" onclick="core.calculateAidat()">Toplu Aidat Oluştur (Prosedür)</button>
+                    </div>
+                    <br>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="number" id="daireIdSorgu" style="padding:10px; border-radius:8px; border:1px solid #ddd" placeholder="Daire ID (Örn: 1)">
+                        <button class="btn-action" onclick="core.fetchAidat()">Sorgula</button>
+                    </div>
+                </div>
+                <div class="data-card">
+                    <table>
+                        <thead><tr><th>Daire ID</th><th>Borç Tutarı</th><th>Durum</th></tr></thead>
+                        <tbody id="aidat-table"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="arizalar" class="view-section">
+                <div class="data-card">
+                    <h3>🛠️ Yeni Arıza Bildir</h3>
+                    <br>
+                    <div style="display:grid; grid-template-columns: 1fr 3fr auto; gap:15px; align-items:flex-end">
+                        <div class="input-wrapper" style="margin:0"><label>Kategori</label><input type="text" id="txtKategori" placeholder="Elektrik, Su vb."></div>
+                        <div class="input-wrapper" style="margin:0"><label>Arıza Açıklaması</label><input type="text" id="txtAriza" placeholder="Sorunu açıklayın..."></div>
+                        <button class="btn-action" onclick="core.saveAriza()">Bildir</button>
+                    </div>
+                </div>
+                <div class="data-card">
+                    <button class="btn-action" style="margin-bottom:15px; background:#64748b" onclick="core.fetchArizalar()">Tüm Arızaları Listele</button>
+                    <table>
+                        <thead><tr><th>Kategori</th><th>Açıklama & Durum</th></tr></thead>
+                        <tbody id="issue-table"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
