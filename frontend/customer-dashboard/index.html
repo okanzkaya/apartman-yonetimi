@@ -11,16 +11,15 @@
 <body>
 
     <div class="sidebar">
-        <h1>ELİT YÖNETİM</h1>
+        <h1 style="cursor: pointer;" onclick="document.querySelector('[data-target=\'anasayfa\']').click()">ELİT YÖNETİM</h1>
         <ul class="nav-links">
             <li data-target="anasayfa" class="active"><i class="fas fa-home"></i> Anasayfa</li>
             <li data-target="profil"><i class="fas fa-user"></i> Profil Bilgileri</li>
             <li data-target="aidat"><i class="fas fa-credit-card"></i> Aidat & Ödemeler</li>
             <li data-target="duyurular"><i class="fas fa-bullhorn"></i> Duyurular</li>
-            <li data-target="talep"><i class="fas fa-headset"></i> Talep & Destek</li>
+            <li data-target="talep"><i class="fas fa-headset"></i> Arıza & Talep</li>
             <li data-target="rezervasyon"><i class="fas fa-calendar-alt"></i> Rezervasyon</li>
             <li data-target="belgeler"><i class="fas fa-file-pdf"></i> Belgeler</li>
-            <li data-target="gecisler"><i class="fas fa-video"></i> Geçiş Loglarım</li>
         </ul>
     </div>
 
@@ -28,10 +27,10 @@
         <div class="header">
             <div>
                 <h2>Hoş Geldiniz, <span style="color: var(--accent-color);">Tuğba Yılmaz</span></h2>
-                <p>A Blok / Daire 12 - Ev Sahibi</p>
+                <p>Kullanıcı ID: #1042 | A Blok / Daire 12 - Ev Sahibi</p>
             </div>
             <div style="text-align: right;">
-                <p><strong id="header-tarih">18 Nisan 2026</strong></p>
+                <p><strong id="header-tarih"></strong></p>
                 <span class="status-badge paid">Güncel Borç Yok</span>
             </div>
         </div>
@@ -41,18 +40,9 @@
                 <div class="card" style="grid-column: 1 / -1; background: linear-gradient(135deg, var(--primary-color), #2a3c8c); color: white;">
                     <h3 style="color: white;"><i class="fas fa-chart-line" style="color: var(--accent-color);"></i> Elit Yönetim Özeti</h3>
                     <div style="display: flex; justify-content: space-around; margin-top: 20px; text-align: center;">
-                        <div>
-                            <h2 style="color: var(--accent-color);">1</h2>
-                            <p style="font-size: 0.9rem;">Yeni Duyuru</p>
-                        </div>
-                        <div>
-                            <h2 style="color: var(--accent-color);">0 TL</h2>
-                            <p style="font-size: 0.9rem;">Güncel Borç</p>
-                        </div>
-                        <div>
-                            <h2 style="color: var(--accent-color);" id="aktif-talep-sayaci">1</h2>
-                            <p style="font-size: 0.9rem;">Aktif Talebiniz</p>
-                        </div>
+                        <div><h2 style="color: var(--accent-color);">1</h2><p style="font-size: 0.9rem;">Yeni Duyuru</p></div>
+                        <div><h2 style="color: var(--accent-color);">0 TL</h2><p style="font-size: 0.9rem;">Güncel Borç</p></div>
+                        <div><h2 style="color: var(--accent-color);" id="aktif-talep-sayaci">1</h2><p style="font-size: 0.9rem;">Aktif Talebiniz</p></div>
                     </div>
                 </div>
 
@@ -77,13 +67,13 @@
             <h2 style="margin-bottom: 20px; color: var(--primary-color);">Profil ve İletişim Bilgileri</h2>
             <div class="card">
                 <table class="data-table">
+                    <tr><th>Kullanıcı Adı (Sistem ID)</th><td>tugba.yilmaz (1042)</td></tr>
                     <tr><th>Ad Soyad</th><td>Tuğba Yılmaz</td></tr>
-                    <tr><th>TC Kimlik No</th><td>12345678900</td></tr>
                     <tr><th>Telefon Numarası</th><td id="display-phone">0555 123 45 67</td></tr>
                     <tr><th>E-Posta Adresi</th><td id="display-email">tugba.yilmaz@ornek.com</td></tr>
                     <tr><th>Araç Plakası</th><td id="display-plate">34 ABC 123</td></tr>
                 </table>
-                <button class="btn" style="width: auto; margin-top: 20px;" onclick="openProfileModal()">Bilgileri Güncelle</button>
+                <button class="btn" style="width: auto; margin-top: 20px;" onclick="app.openProfileModal()">Bilgileri Güncelle</button>
             </div>
         </div>
 
@@ -93,16 +83,8 @@
                 <table class="data-table">
                     <thead><tr><th>Dönem</th><th>Açıklama</th><th>Tutar</th><th>Durum</th><th>İşlem</th></tr></thead>
                     <tbody>
-                        <tr>
-                            <td>Nisan 2026</td><td>Nisan Ayı Aidatı</td><td>750 TL</td>
-                            <td><span class="status-badge paid">Ödendi</span></td>
-                            <td><button class="btn-sm-gray" onclick="showToast('Makbuz indiriliyor...', 'info')"><i class="fas fa-download"></i> Makbuz</button></td>
-                        </tr>
-                        <tr>
-                            <td>Mart 2026</td><td>Mart Ayı Aidatı</td><td>750 TL</td>
-                            <td><span class="status-badge paid">Ödendi</span></td>
-                            <td><button class="btn-sm-gray" onclick="showToast('Makbuz indiriliyor...', 'info')"><i class="fas fa-download"></i> Makbuz</button></td>
-                        </tr>
+                        <tr><td>Nisan 2026</td><td>Nisan Ayı Aidatı</td><td>750 TL</td><td><span class="status-badge paid">Ödendi</span></td><td><button class="btn-sm-gray" onclick="app.showToast('Makbuz indiriliyor...', 'info')"><i class="fas fa-download"></i></button></td></tr>
+                        <tr><td>Mart 2026</td><td>Mart Ayı Aidatı</td><td>750 TL</td><td><span class="status-badge paid">Ödendi</span></td><td><button class="btn-sm-gray" onclick="app.showToast('Makbuz indiriliyor...', 'info')"><i class="fas fa-download"></i></button></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -119,8 +101,6 @@
 
         <div id="talep" class="tab-content">
             <h2 style="margin-bottom: 20px; color: var(--primary-color);">Talep & Destek Masası</h2>
-            <p style="margin-bottom: 20px; color: var(--text-muted);">Arıza bildirimleriniz ve yönetime mesajlarınız buradan doğrudan sisteme aktarılır.</p>
-            
             <div class="dashboard-grid">
                 <div class="card">
                     <h3>Yeni Talep / Mesaj Oluştur</h3>
@@ -135,16 +115,18 @@
 
                     <label style="font-weight: 600;">Açıklama / Mesajınız</label>
                     <textarea id="talep-aciklama" placeholder="Durumu detaylıca anlatınız..." class="form-control" style="height: 100px; margin-bottom: 15px;"></textarea>
-
-                    <button class="btn" onclick="gonderTalep()">Yönetime İlet</button>
+                    <button class="btn" onclick="app.gonderTalep()">Yönetime İlet</button>
                 </div>
 
                 <div class="card">
                     <h3><i class="fas fa-clipboard-list"></i> Geçmiş Talepleriniz</h3>
                     <table class="data-table">
-                        <thead><tr><th>Tarih</th><th>Kategori</th><th>Durum</th></tr></thead>
+                        <thead><tr><th>Tarih</th><th>Kategori</th><th>Durum</th><th>Detay</th></tr></thead>
                         <tbody id="talep-listesi">
-                            <tr><td>10.04.2026</td><td>Aydınlatma</td><td><span class="status-badge paid">Çözüldü</span></td></tr>
+                            <tr>
+                                <td>10.04.2026</td><td>Ortak Alan Aydınlatma</td><td><span class="status-badge paid">Çözüldü</span></td>
+                                <td><button class="btn-sm-gray" onclick="app.showTalepDetay('Ortak Alan Aydınlatma', 'A Blok 3. kat koridor lambası patlamış, zifiri karanlık.', 'Çözüldü')">İncele</button></td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -162,9 +144,8 @@
                     <select id="havuz-saat" class="form-control" style="margin-top: 15px;">
                         <option value="10:00 - 12:00">10:00 - 12:00</option>
                         <option value="14:00 - 16:00">14:00 - 16:00</option>
-                        <option disabled style="color:red;">18:00 - 20:00 (Dolu)</option>
                     </select>
-                    <button class="btn" onclick="yapRezervasyon('Açık Havuz', 'havuz-takvim', 'havuz-saat')">Rezerve Et</button>
+                    <button class="btn" onclick="app.yapRezervasyon('Açık Havuz', 'havuz-takvim', 'havuz-saat')">Rezerve Et</button>
                 </div>
                 
                 <div class="card" style="grid-column: 1 / -1;">
@@ -173,7 +154,7 @@
                         <thead><tr><th>Tesis</th><th>Gün</th><th>Saat</th><th>Durum</th></tr></thead>
                         <tbody id="rezervasyon-listesi">
                             <tr id="empty-rezervasyon">
-                                <td colspan="4" class="empty-state" style="text-align: center; padding: 20px; color: #888;">Henüz aktif bir rezervasyonunuz bulunmuyor.</td>
+                                <td colspan="4" style="text-align: center; padding: 20px; color: #888;">Henüz aktif bir rezervasyonunuz bulunmuyor.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -182,28 +163,15 @@
         </div>
 
         <div id="belgeler" class="tab-content">
-            <h2 style="margin-bottom: 20px; color: var(--primary-color);">Site Yönetimi Belgeleri</h2>
+            <h2 style="margin-bottom: 20px; color: var(--primary-color);">Sistemdeki Açık Belgeler</h2>
             <div class="card">
                 <table class="data-table">
                     <tr>
                         <td><i class="far fa-file-pdf" style="color: var(--danger); font-size: 1.2rem;"></i></td>
-                        <td><b>2026 Yılı İşletme Projesi (Bütçe)</b></td>
-                        <td><button class="btn-sm-gray" onclick="showToast('İndiriliyor...', 'info')">İndir</button></td>
+                        <td><b>Site Yaşam Kuralları ve Yönetmelik</b></td>
+                        <td><span class="status-badge paid">Herkese Açık</span></td>
+                        <td><button class="btn-sm-gray" onclick="app.showToast('İndiriliyor...', 'info')">İndir</button></td>
                     </tr>
-                </table>
-            </div>
-        </div>
-
-        <div id="gecisler" class="tab-content">
-            <h2 style="margin-bottom: 20px; color: var(--primary-color);">Daireme Ait Geçiş Kayıtları</h2>
-            <p style="margin-bottom: 20px; color: var(--text-muted);">Turnike ve otopark okuyucularından sizin veya misafirlerinizin/kargolarınızın geçiş logları.</p>
-            <div class="card">
-                <table class="data-table">
-                    <thead><tr><th>Tarih & Saat</th><th>Kişi / Araç Bilgisi</th><th>Nokta</th><th>İşlem Tipi</th></tr></thead>
-                    <tbody>
-                        <tr><td>Bugün - 08:30</td><td>Tuğba Yılmaz</td><td>Otopark Çıkışı</td><td><span class="status-badge delayed">Çıkış</span></td></tr>
-                        <tr><td>Dün - 14:15</td><td>Kargo (Yurtiçi)</td><td>Ana Kapı Turnike</td><td><span class="status-badge paid">Giriş</span></td></tr>
-                    </tbody>
                 </table>
             </div>
         </div>
@@ -216,13 +184,23 @@
             <div class="form-group"><label>Telefon Numarası</label><input type="text" id="input-phone" class="form-control" value="0555 123 45 67"></div>
             <div class="form-group"><label>E-Posta Adresi</label><input type="email" id="input-email" class="form-control" value="tugba.yilmaz@ornek.com"></div>
             <div class="form-group"><label>Araç Plakası</label><input type="text" id="input-plate" class="form-control" value="34 ABC 123"></div>
-            <button class="btn" onclick="saveProfile()">Değişiklikleri Kaydet</button>
-            <button class="btn close-modal" style="background: #ccc; color: #333;" onclick="closeProfileModal()">İptal</button>
+            <button class="btn" onclick="app.saveProfile()">Kaydet</button>
+            <button class="btn" style="background: #ccc; color: #333;" onclick="app.closeProfileModal()">İptal</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="talep-detay-modal">
+        <div class="modal">
+            <h3>Talep Detayı</h3>
+            <p><strong>Kategori:</strong> <span id="detay-kategori"></span></p>
+            <p><strong>Durum:</strong> <span id="detay-durum" class="status-badge"></span></p>
+            <p style="margin-top:15px;"><strong>Açıklama Metni:</strong></p>
+            <div style="background: #f4f7f6; padding: 15px; border-radius: 8px; margin-top: 5px; font-size: 0.9rem;" id="detay-aciklama"></div>
+            <button class="btn" style="background: #ccc; color: #333; margin-top: 20px;" onclick="document.getElementById('talep-detay-modal').style.display = 'none'">Kapat</button>
         </div>
     </div>
 
     <div id="toast">İşlem Başarılı!</div>
-
     <script src="app.js"></script>
 </body>
 </html>

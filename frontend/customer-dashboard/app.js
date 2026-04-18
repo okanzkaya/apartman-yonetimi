@@ -1,100 +1,122 @@
-// Bugünün tarihini ekrana yaz
-document.addEventListener('DOMContentLoaded', () => {
-    const bugun = new Date();
-    const secenekler = { year: 'numeric', month: 'long', day: 'numeric' };
-    document.getElementById('header-tarih').innerText = bugun.toLocaleDateString('tr-TR', secenekler);
+const app = (() => {
+    // XSS Koruması için veriyi normalize et
+    const escapeHTML = (str) => {
+        return str.replace(/[&<>'"]/g, tag => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+        }[tag] || tag));
+    };
 
-    // Sekme (Tab) Değiştirme Mantığı
-    const navItems = document.querySelectorAll('.nav-links li');
-    const tabContents = document.querySelectorAll('.tab-content');
+    const showToast = (message, type = 'success') => {
+        const toast = document.getElementById('toast');
+        toast.innerText = message;
+        toast.style.backgroundColor = type === 'success' ? 'var(--success)' : (type === 'danger' ? 'var(--danger)' : '#17a2b8');
+        toast.className = 'show';
+        setTimeout(() => { toast.className = toast.className.replace('show', ''); }, 3000);
+    };
 
-    navItems.forEach(item => {
-        item.addEventListener('click', function() {
-            const targetId = this.getAttribute('data-target');
-            navItems.forEach(nav => nav.classList.remove('active'));
-            this.classList.add('active');
-            tabContents.forEach(content => content.classList.remove('active'));
-            document.getElementById(targetId).classList.add('active');
-        });
-    });
+    const getBugunTarih = () => {
+        return new Date().toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
+    };
 
-    // Takvimleri Başlat
-    setupCalendar('havuz-takvim');
-});
-
-function setupCalendar(calendarId) {
-    const calendar = document.getElementById(calendarId);
-    if(calendar) {
-        const days = calendar.querySelectorAll('.day');
-        days.forEach(day => {
-            day.addEventListener('click', function() {
-                days.forEach(d => d.classList.remove('active'));
+    const setupTabs = () => {
+        const navItems = document.querySelectorAll('.nav-links li');
+        const tabContents = document.querySelectorAll('.tab-content');
+        navItems.forEach(item => {
+            item.addEventListener('click', function() {
+                const targetId = this.getAttribute('data-target');
+                navItems.forEach(nav => nav.classList.remove('active'));
                 this.classList.add('active');
+                tabContents.forEach(content => content.classList.remove('active'));
+                document.getElementById(targetId).classList.add('active');
             });
         });
-    }
-}
+    };
 
-// Toast (Bildirim)
-function showToast(message, type = 'success') {
-    const toast = document.getElementById('toast');
-    toast.innerText = message;
-    toast.style.backgroundColor = type === 'success' ? 'var(--success)' : (type === 'danger' ? 'var(--danger)' : '#17a2b8');
-    toast.className = 'show';
-    setTimeout(() => { toast.className = toast.className.replace('show', ''); }, 3000);
-}
+    const setupCalendar = (calendarId) => {
+        const calendar = document.getElementById(calendarId);
+        if(calendar) {
+            const days = calendar.querySelectorAll('.day');
+            days.forEach(day => {
+                day.addEventListener('click', function() {
+                    days.forEach(d => d.classList.remove('active'));
+                    this.classList.add('active');
+                });
+            });
+        }
+    };
 
-// Profil İşlemleri
-function openProfileModal() { document.getElementById('profile-modal').style.display = 'flex'; }
-function closeProfileModal() { document.getElementById('profile-modal').style.display = 'none'; }
-function saveProfile() {
-    document.getElementById('display-phone').innerText = document.getElementById('input-phone').value;
-    document.getElementById('display-email').innerText = document.getElementById('input-email').value;
-    document.getElementById('display-plate').innerText = document.getElementById('input-plate').value;
-    closeProfileModal();
-    showToast('Profil bilgileriniz başarıyla güncellendi.', 'success');
-}
+    // Yükleme Sonrası Başlatıcı
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('header-tarih').innerText = getBugunTarih();
+        setupTabs();
+        setupCalendar('havuz-takvim');
+    });
 
-// BİRLEŞTİRİLMİŞ TALEP MASASI (Mesaj ve Arıza NLP'ye gider)
-function gonderTalep() {
-    const kategori = document.getElementById('talep-kategori').value;
-    const aciklama = document.getElementById('talep-aciklama').value;
-    
-    if(aciklama.trim() === '') {
-        showToast('Lütfen talebinizi detaylıca yazınız!', 'danger');
-        return;
-    }
+    return {
+        showToast,
+        openProfileModal: () => document.getElementById('profile-modal').style.display = 'flex',
+        closeProfileModal: () => document.getElementById('profile-modal').style.display = 'none',
+        saveProfile: () => {
+            document.getElementById('display-phone').innerText = escapeHTML(document.getElementById('input-phone').value);
+            document.getElementById('display-email').innerText = escapeHTML(document.getElementById('input-email').value);
+            document.getElementById('display-plate').innerText = escapeHTML(document.getElementById('input-plate').value);
+            app.closeProfileModal();
+            showToast('Profil bilgileriniz başarıyla güncellendi.', 'success');
+        },
+        
+        showTalepDetay: (kategori, aciklama, durum) => {
+            document.getElementById('detay-kategori').innerText = kategori;
+            document.getElementById('detay-aciklama').innerText = aciklama;
+            const durumSpan = document.getElementById('detay-durum');
+            durumSpan.innerText = durum;
+            durumSpan.className = `status-badge ${durum === 'Çözüldü' ? 'paid' : 'pending'}`;
+            document.getElementById('talep-detay-modal').style.display = 'flex';
+        },
 
-    const tbody = document.getElementById('talep-listesi');
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-        <td>Bugün</td>
-        <td>${kategori}</td>
-        <td><span class="status-badge pending" style="background:#e8f4fd; color:#1a2a6c;">İnceleniyor (AI)</span></td>
-    `;
-    tbody.insertBefore(tr, tbody.firstChild); 
+        gonderTalep: () => {
+            const kategori = document.getElementById('talep-kategori').value;
+            const rawAciklama = document.getElementById('talep-aciklama').value;
+            
+            if(rawAciklama.trim() === '') return showToast('Lütfen talebinizi detaylıca yazınız!', 'danger');
 
-    const sayac = document.getElementById('aktif-talep-sayaci');
-    sayac.innerText = parseInt(sayac.innerText) + 1;
+            const aciklama = escapeHTML(rawAciklama);
+            const tbody = document.getElementById('talep-listesi');
+            
+            // XSS güvenli satır oluşturma
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>Bugün</td>
+                <td>${escapeHTML(kategori)}</td>
+                <td><span class="status-badge pending">İnceleniyor (AI)</span></td>
+                <td><button class="btn-sm-gray" onclick="app.showTalepDetay('${escapeHTML(kategori)}', '${aciklama}', 'İnceleniyor (AI)')">İncele</button></td>
+            `;
+            tbody.insertBefore(tr, tbody.firstChild); 
 
-    showToast('Talebiniz yönetime ve analize iletildi.', 'success');
-    document.getElementById('talep-aciklama').value = '';
-}
+            const sayac = document.getElementById('aktif-talep-sayaci');
+            sayac.innerText = parseInt(sayac.innerText) + 1;
 
-// Rezervasyon İşlemi
-function yapRezervasyon(tesisAdi, takvimId, saatId) {
-    const aktifGun = document.querySelector(`#${takvimId} .day.active`).innerText;
-    const seciliSaat = document.getElementById(saatId).value;
+            showToast('Talebiniz yönetime ve NLP analizine iletildi.', 'success');
+            document.getElementById('talep-aciklama').value = '';
+        },
 
-    const tbody = document.getElementById('rezervasyon-listesi');
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-        <td><b>${tesisAdi}</b></td>
-        <td>${aktifGun} Günü</td>
-        <td>${seciliSaat}</td>
-        <td><span class="status-badge paid">Onay Bekliyor</span></td>
-    `;
-    tbody.appendChild(tr);
+        yapRezervasyon: (tesisAdi, takvimId, saatId) => {
+            const aktifGun = document.querySelector(`#${takvimId} .day.active`).innerText;
+            const seciliSaat = document.getElementById(saatId).value;
+            
+            const emptyState = document.getElementById('empty-rezervasyon');
+            if(emptyState) emptyState.style.display = 'none'; // DOM'dan silmek yerine gizle
 
-    showToast(`${tesisAdi} rezervasyon talebiniz yönetime iletildi!`, 'success');
-}
+            const tbody = document.getElementById('rezervasyon-listesi');
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><b>${escapeHTML(tesisAdi)}</b></td>
+                <td>${escapeHTML(aktifGun)} Günü</td>
+                <td>${escapeHTML(seciliSaat)}</td>
+                <td><span class="status-badge pending">Onay Bekliyor</span></td>
+            `;
+            tbody.appendChild(tr);
+
+            showToast(`${tesisAdi} rezervasyon talebiniz iletildi!`, 'success');
+        }
+    };
+})();

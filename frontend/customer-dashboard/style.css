@@ -1,71 +1,42 @@
-:root {
-    --primary-color: #1a2a6c;
-    --accent-color: #b89552;
-    --bg-light: #f4f7f6;
-    --text-dark: #333;
-    --white: #ffffff;
-    --danger: #e74c3c;
-    --success: #2ecc71;
-    --warning: #f39c12;
-    --info: #3498db;
-}
-
+/* Var olan style.css yapınızı koruyun, sadece modal için display:flex desteğini sağlayın */
+:root { --primary-color: #1a2a6c; --accent-color: #b89552; --bg-light: #f4f7f6; --text-dark: #333; --white: #ffffff; --danger: #e74c3c; --success: #2ecc71; --warning: #f39c12; --info: #3498db; }
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
 body { background-color: var(--bg-light); display: flex; min-height: 100vh; color: var(--text-dark); }
-
-/* Sidebar */
-.sidebar { width: 280px; background: var(--primary-color); color: var(--white); padding: 20px; position: fixed; height: 100%; transition: all 0.3s; z-index: 100; }
-.sidebar h1 { font-size: 24px; text-align: center; padding: 20px 0; border-bottom: 1px solid rgba(255,255,255,0.1); letter-spacing: 2px; color: var(--accent-color); }
+.sidebar { width: 280px; background: var(--primary-color); color: var(--white); padding: 20px; position: fixed; height: 100%; z-index: 100; }
+.sidebar h1 { font-size: 24px; text-align: center; padding: 20px 0; border-bottom: 1px solid rgba(255,255,255,0.1); letter-spacing: 2px; color: var(--accent-color); transition: 0.2s;}
+.sidebar h1:hover { opacity: 0.8; }
 .nav-links { list-style: none; margin-top: 30px; }
 .nav-links li { padding: 15px 10px; border-radius: 8px; margin-bottom: 5px; cursor: pointer; transition: 0.3s; display: flex; align-items: center; }
 .nav-links li:hover, .nav-links li.active { background: var(--accent-color); color: var(--primary-color); font-weight: 600; }
 .nav-links li i { margin-right: 15px; width: 20px; text-align: center; }
-
-/* Main Content */
 .main-content { margin-left: 280px; width: calc(100% - 280px); padding: 40px; }
 .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; background: var(--white); padding: 20px 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-
-/* Tabs */
 .tab-content { display: none; animation: fadeIn 0.4s ease; }
 .tab-content.active { display: block; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-/* Cards & Grids */
 .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 25px; }
 .card { background: var(--white); padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); transition: transform 0.3s; margin-bottom: 25px; }
-.card:hover { transform: translateY(-5px); }
 .card h3 { margin-bottom: 15px; color: var(--primary-color); display: flex; align-items: center; font-size: 1.2rem; }
 .card h3 i { margin-right: 10px; color: var(--accent-color); }
-
-/* Badges & Buttons */
 .status-badge { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
 .paid { background: #d4edda; color: #155724; }
 .delayed { background: #f8d7da; color: #721c24; }
 .pending { background: #e8f4fd; color: #1a2a6c; }
-
 .btn { background: var(--primary-color); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-top: 15px; width: 100%; font-weight: 600; transition: 0.3s; }
 .btn:hover { background: var(--accent-color); color: var(--primary-color); }
 .btn-outline { background: var(--bg-light); color: var(--primary-color); border: 1px solid var(--primary-color); padding: 10px; width: 100%; border-radius: 8px; font-weight: 600; margin-bottom: 10px; cursor: pointer; transition: 0.2s;}
 .btn-outline:hover { background: var(--primary-color); color: white; }
 .btn-sm-gray { margin: 0; padding: 5px 10px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer;}
-
-/* Tables */
 .data-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
 .data-table th, .data-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.95rem;}
 .data-table th { background-color: var(--bg-light); color: var(--primary-color); font-weight: 600; }
-.data-table tr:hover { background-color: #f9f9f9; }
 .form-control { width: 100%; padding: 12px; margin-top: 8px; border-radius: 8px; border: 1px solid #ddd; font-family: inherit; }
-
-/* Calendar */
 .calendar-sim { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
 .day { background: #eee; padding: 8px 5px; text-align: center; font-size: 12px; border-radius: 4px; cursor: pointer; font-weight: 600; transition: 0.2s; }
 .day:hover { background: #ddd; }
 .day.active { background: var(--accent-color); color: white; }
-
-/* Toast & Modals */
 #toast { visibility: hidden; min-width: 250px; background-color: var(--success); color: #fff; text-align: center; border-radius: 8px; padding: 16px; position: fixed; z-index: 1000; left: 50%; bottom: 30px; font-weight: 600; transform: translateX(-50%); box-shadow: 0 4px 15px rgba(0,0,0,0.2); opacity: 0; transition: opacity 0.5s, bottom 0.5s; }
 #toast.show { visibility: visible; opacity: 1; bottom: 50px; }
-
 .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; align-items: center; justify-content: center; }
 .modal { background: white; padding: 30px; border-radius: 15px; width: 90%; max-width: 500px; box-shadow: 0 5px 30px rgba(0,0,0,0.3); }
 .modal h3 { color: var(--primary-color); margin-bottom: 20px; border-bottom: 2px solid var(--accent-color); padding-bottom: 10px; }
