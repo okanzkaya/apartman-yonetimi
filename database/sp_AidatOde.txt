@@ -1,0 +1,22 @@
+CREATE PROCEDURE sp_AidatOde
+    @AidatID INT
+AS
+BEGIN
+    -- Sadece henüz ödenmemiş bir aidatsa işlem yap
+    IF EXISTS (SELECT 1 FROM Aidatlar WHERE AidatID = @AidatID AND OdemeDurumu = 0)
+    BEGIN
+        UPDATE Aidatlar
+        SET 
+            OdemeDurumu = 1, 
+            OdemeTarihi = GETDATE()
+        WHERE 
+            AidatID = @AidatID;
+            
+        PRINT 'Aidat başarıyla ödendi olarak işaretlendi.';
+    END
+    ELSE
+    BEGIN
+        PRINT 'Bu aidat zaten ödenmiş veya bulunamadı.';
+    END
+END;
+GO

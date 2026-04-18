@@ -1,0 +1,33 @@
+CREATE PROCEDURE sp_RezervasyonEkle
+    @KullaniciID INT,
+    @AlanID INT,
+    @BaslangicZamani DATETIME,
+    @BitisZamani DATETIME
+AS
+BEGIN
+    -- Tarih ve saat çakışması kontrolü
+    IF EXISTS (
+        SELECT 1 
+        FROM Rezervasyonlar 
+        WHERE AlanID = @AlanID 
+          AND Durum = 'Onaylandı'
+          AND (
+               (@BaslangicZamani >= BaslangicZamani AND @BaslangicZamani < BitisZamani) OR 
+               (@BitisZamani > BaslangicZamani AND @BitisZamani <= BitisZamani) OR
+               (@BaslangicZamani <= BaslangicZamani AND @BitisZamani >= BitisZamani)
+              )
+    )
+    BEGIN
+        -- Çakışma durumu
+        RAISERROR ('Hata: Bu alan için belirtilen saatler arasında başka bir rezervasyon bulunmaktadır.', 16, 1);
+    END
+    ELSE
+    BEGIN
+        -- Çakışma yoksa rezervasyonu ekle
+        INSERT INTO Rezervasyonlar (KullaniciID, AlanID, BaslangicZamani, BitisZamani, Durum)
+        VALUES (@KullaniciID, @AlanID, @BaslangicZamani, @BitisZamani, 'Onaylandı');
+        
+        PRINT 'Rezervasyon başarıyla oluşturuldu.';
+    END
+END;
+GO
