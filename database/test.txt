@@ -1,1 +1,67 @@
+CREATE DATABASE ElitYonetimDB;
+GO
+USE ElitYonetimDB;
+GO
 
+-- 1. Kullanıcılar Tablosu
+CREATE TABLE Kullanicilar (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    KullaniciAdi NVARCHAR(50) NOT NULL,
+    SifreHash NVARCHAR(MAX) NOT NULL,
+    AdSoyad NVARCHAR(100) NOT NULL,
+    BlokDaire NVARCHAR(20) NULL,
+    Telefon NVARCHAR(15) NULL,
+    Rol INT NOT NULL, -- 0: Sakin, 1: Yonetici
+    AktifMi BIT NOT NULL DEFAULT 1
+);
+
+-- 2. Finans Hareketleri Tablosu
+CREATE TABLE FinansHareketleri (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    KullaniciId INT NULL,
+    Tarih DATETIME2 NOT NULL,
+    Donem NVARCHAR(50) NOT NULL,
+    Aciklama NVARCHAR(255) NOT NULL,
+    Tip INT NOT NULL, -- 0: Gelir, 1: Gider
+    Tutar DECIMAL(18,2) NOT NULL,
+    Durum NVARCHAR(50) NULL,
+    CONSTRAINT FK_Finans_Kullanici FOREIGN KEY (KullaniciId) REFERENCES Kullanicilar(Id) ON DELETE NO ACTION
+);
+
+-- 3. Talepler Tablosu
+CREATE TABLE Talepler (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    KullaniciId INT NOT NULL,
+    Tarih DATETIME2 NOT NULL DEFAULT GETDATE(),
+    HamMetin NVARCHAR(MAX) NOT NULL,
+    Kategori NVARCHAR(100) NULL,
+    DuyguDurumu NVARCHAR(50) NULL,
+    Aciliyet INT NOT NULL, -- 0: Düşük, 1: Orta, 2: Yüksek
+    Durum INT NOT NULL, -- 0: İnceleniyor, 1: İşleme Alındı, 2: Çözüldü
+    CONSTRAINT FK_Talep_Kullanici FOREIGN KEY (KullaniciId) REFERENCES Kullanicilar(Id) ON DELETE CASCADE
+);
+
+-- 4. Rezervasyonlar Tablosu
+CREATE TABLE Rezervasyonlar (
+    Id INT IDENTITY(1,1) PRIMARY KEY,
+    KullaniciId INT NOT NULL,
+    TesisAdi NVARCHAR(100) NOT NULL,
+    Tarih DATETIME2 NOT NULL,
+    SaatAraligi NVARCHAR(50) NOT NULL,
+    Durum INT NOT NULL, -- 0: Bekliyor, 1: Onaylandı, 2: Reddedildi
+    CONSTRAINT FK_Rezervasyon_Kullanici FOREIGN KEY (KullaniciId) REFERENCES Kullanicilar(Id) ON DELETE CASCADE
+);
+
+-- TEST VERİLERİ (SİSTEME GİRİŞ YAPABİLMEN İÇİN)
+
+-- Yönetici Hesabı (Kullanıcı Adı: admin, Şifre: 123456)
+INSERT INTO Kullanicilar (KullaniciAdi, SifreHash, AdSoyad, Rol, AktifMi) 
+VALUES ('admin', '123456', 'Sistem Yöneticisi', 1, 1);
+
+-- Sakin Hesabı (Kullanıcı Adı: sakin, Şifre: 123456)
+INSERT INTO Kullanicilar (KullaniciAdi, SifreHash, AdSoyad, BlokDaire, Telefon, Rol, AktifMi) 
+VALUES ('sakin', '123456', 'Tuğba Yılmaz', 'A Blok D:12', '05551234567', 0, 1);
+
+-- Örnek Aidat Borcu
+INSERT INTO FinansHareketleri (KullaniciId, Tarih, Donem, Aciklama, Tip, Tutar, Durum)
+VALUES (2, GETDATE(), 'Nisan 2026', 'Nisan Ayı Aidat Ödemesi', 0, 1500.00, 'Ödenmedi');
