@@ -1,19 +1,18 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 using System.Linq;
-using System;
+using System.Security.Claims;
 using ElitYonetim.Data;
-using ElitYonetim.Models;
-using ElitYonetim.DTOs;
 
 namespace ElitYonetim.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class FinansController : ControllerBase
     {
-        // Encapsulation: Veritabanı nesnemizi dış erişime kapatıyoruz.
         private readonly ElitYonetimContext _context;
 
         public FinansController(ElitYonetimContext context)
@@ -21,55 +20,52 @@ namespace ElitYonetim.Controllers
             _context = context;
         }
 
-        // GET: api/finans/ekstre/1042
-        // Frontend'deki "Hesap Ekstresi Görüntüle" butonu burayı tetikler.
-        [HttpGet("ekstre/{kullaniciId}")]
-        public async Task<IActionResult> EkstreGetir(int kullaniciId)
+        [HttpGet("ekstre")]
+        public async Task<IActionResult> EkstreGetir()
         {
-            var hareketler = await _context.FinansHareketleri
-                .Where(f => f.KullaniciId == kullaniciId)
-                .OrderByDescending(f => f.Tarih)
-                .Select(f => new 
-                {
-                    f.Id,
-                    f.Donem,
-                    f.Aciklama,
-                    f.Tutar,
-                    f.Durum
-                })
-                .ToListAsync();
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
-            if (hareketler == null || !hareketler.Any())
-            {
-                return NotFound("Bu kullanıcıya ait finansal hareket bulunamadı.");
-            }
+            var hareketler = await _context.FinansHareketleri
+                .Where(f => f.KullaniciId == userId)
+                .OrderByDescending(f => f.Tarih)
+                .Select(f => new { f.Id, f.Donem, f.Aciklama, f.Tutar, f.Durum })
+                .ToListAsync();
 
             return Ok(hareketler);
         }
 
-        // POST: api/finans/ode
-        // Frontend'deki "Şimdi Öde" butonu burayı tetikler.
         [HttpPost("ode")]
         public async Task<IActionResult> AidatOde([FromBody] int finansHareketiId)
         {
+            int userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
             var hareket = await _context.FinansHareketleri.FindAsync(finansHareketiId);
 
-            if (hareket == null)
-            {
-                return NotFound("Ödenecek fatura veya aidat bulunamadı.");
-            }
+            if (hareket == null || hareket.KullaniciId != userId) 
+                return NotFound("İşlem yetkiniz yok veya fatura bulunamadı.");
+                
+            if (hareket.Durum == "Ödendi") return BadRequest("Bu borç zaten ödenmiş.");
 
-            if (hareket.Durum == "Ödendi")
-            {
-                return BadRequest("Bu borç zaten ödenmiş.");
-            }
-
-            // Ödeme işlemlerinin simülasyonu (Gerçek hayatta burada Iyzico/Stripe gibi bir API çağrılır)
             hareket.Durum = "Ödendi";
-            
             await _context.SaveChangesAsync();
-
             return Ok(new { Mesaj = "Ödeme işlemi başarıyla gerçekleşti." });
+        }
+
+        [Authorize(Roles = "Yonetici")]
+        [HttpGet("hepsini-getir")]
+        public async Task<IActionResult> TumFinansHareketleriniGetir()
+        {
+            var hareketler = await _context.FinansHareketleri
+                .Include(f => f.Kullanici)
+                .OrderByDescending(f => f.Tarih)
+                .Select(f => new 
+                {
+                    f.Id,
+                    KullaniciAdi = f.Kullanici != null ? f.Kullanici.AdSoyad : "Ortak Gider",
+                    Tarih = f.Tarih.ToString("dd.MM.yyyy"),
+                    f.Donem, f.Aciklama, Tip = f.Tip.ToString(), f.Tutar, f.Durum
+                }).ToListAsync();
+
+            return Ok(hareketler);
         }
     }
 }

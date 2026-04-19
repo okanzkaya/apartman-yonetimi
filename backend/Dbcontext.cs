@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using ElitYonetim.Models;
 
 namespace ElitYonetim.Data
 {
@@ -8,16 +9,17 @@ namespace ElitYonetim.Data
         {
         }
 
-        // Veritabanındaki tablolarımız
         public DbSet<Kullanici> Kullanicilar { get; set; }
         public DbSet<FinansHareketi> FinansHareketleri { get; set; }
         public DbSet<Talep> Talepler { get; set; }
         public DbSet<Rezervasyon> Rezervasyonlar { get; set; }
-        public DbSet<PlanliBakim> PlanliBakimlar { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            // İlişkilerin (Foreign Keys) tanımlanması
+            modelBuilder.Entity<FinansHareketi>()
+                .Property(f => f.Tutar)
+                .HasColumnType("decimal(18,2)");
+
             modelBuilder.Entity<Talep>()
                 .HasOne(t => t.Kullanici)
                 .WithMany(k => k.Talepler)
@@ -31,8 +33,7 @@ namespace ElitYonetim.Data
             modelBuilder.Entity<FinansHareketi>()
                 .HasOne(f => f.Kullanici)
                 .WithMany(k => k.FinansHareketleri)
-                .HasForeignKey(f => f.KullaniciId)
-                .IsRequired(false); // Giderler (örn: asansör faturası) bir kullanıcıya ait olmak zorunda değil
+                .HasForeignKey(f => f.KullaniciId);
         }
     }
 }
