@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiCall } from '../../api/apiClient';
+import { apiCall, downloadFile } from '../../api/apiClient';
 import Sidebar from '../../components/layout/Sidebar';
 import Toast from '../../components/ui/Toast';
 import './Admin.css';
@@ -10,9 +10,10 @@ const AdminDashboard = () => {
     const [activeTab, setActiveTab] = useState(localStorage.getItem('adminActiveTab') || 'dashboard');
     const [innerTab, setInnerTab] = useState('tab-genel');
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
-    const [searchTerm, setSearchTerm] = useState('');
+    
+    // State ve Ref'ler
+    const dosyaInputRef = useRef(null);
 
-    // --- VERİ DURUMLARI (STATES) ---
     const [finans, setFinans] = useState([]);
     const [kayitlar, setKayitlar] = useState([]);
     const [arizalar, setArizalar] = useState([]);
@@ -21,24 +22,22 @@ const AdminDashboard = () => {
     const [tedarikciler, setTedarikciler] = useState([]);
     const [dokumanlar, setDokumanlar] = useState([]);
 
-    // --- FORM DURUMLARI ---
     const [aidatTutar, setAidatTutar] = useState('');
-    const [sakinForm, setSakinForm] = useState({ BlokDaire: '', AdSoyad: '', Telefon: '', KullaniciAdi: '', Sifre: '' });
+    const [sakinForm, setSakinForm] = useState({ BlokDaire: '', AdSoyad: '', Telefon: '', Plaka: '', KullaniciAdi: '', Sifre: '' });
     const [bakimForm, setBakimForm] = useState({ Tur: '', Tarih: '', Maliyet: '', Frekans: '1', Birim: 'Ay' });
     const [tedarikciForm, setTedarikciForm] = useState({ Isim: '', Alan: '', Tel: '' });
     const [dokumanForm, setDokumanForm] = useState({ Isim: '', ErisimTipi: 'Herkese Açık' });
+    const [dosya, setDosya] = useState(null);
 
-    // --- MODAL DURUMLARI ---
     const [nlpModalData, setNlpModalData] = useState(null);
 
-    // Sekme değiştiğinde verileri çek ve kaydet
     useEffect(() => {
         localStorage.setItem('adminActiveTab', activeTab);
         fetchData();
     }, [activeTab]);
 
     const triggerToast = (msg, type = 'success') => setToast({ show: true, message: msg, type });
-    const handleLogout = () => { localStorage.removeItem('adminToken'); navigate('/admin/login'); };
+    const handleLogout = () => { localStorage.removeItem('adminToken'); navigate('/login'); };
 
     const fetchData = async () => {
         try {
@@ -52,18 +51,26 @@ const AdminDashboard = () => {
         } catch (error) { console.error(error); }
     };
 
-    // --- İŞLEM FONKSİYONLARI ---
+    const getZamanDurumu = (tarihStr) => {
+        const [d, m, y] = tarihStr.split('.');
+        const islemTarihi = new Date(`${y}-${m}-${d}`);
+        const bugun = new Date();
+        bugun.setHours(0,0,0,0);
+
+        if (islemTarihi.getTime() === bugun.getTime()) return <span className="badge warning">Bugün</span>;
+        if (islemTarihi.getTime() < bugun.getTime()) return <span className="badge danger">Süresi Geçti</span>;
+        return <span className="badge info">Yaklaşıyor</span>;
+    };
+
     const handleAidatBorclandir = async () => {
         if (!aidatTutar) return triggerToast("Lütfen tutar girin.", "warning");
-        const ilkSakin = kayitlar[0]?.id;
-        if (!ilkSakin) return triggerToast("Borçlandırılacak sakin bulunamadı.", "danger");
-
         try {
             await apiCall('/finans/borclandir', 'POST', { 
-                KullaniciId: ilkSakin, Donem: new Date().toLocaleString('tr-TR', { month: 'long', year: 'numeric' }), 
+                KullaniciId: 'ALL', Donem: new Date().toLocaleString('tr-TR', { month: 'long', year: 'numeric' }), 
                 Aciklama: 'Yönetim Aidat Borçlandırması', Tutar: parseFloat(aidatTutar) 
             }, 'adminToken');
-            triggerToast("Borçlandırma başarılı.", "success");
+            triggerToast("Tüm sakinler borçlandırıldı.", "success");
+            setAidatTutar('');
             fetchData();
         } catch (e) { triggerToast(e.message, "danger"); }
     };
@@ -72,22 +79,22 @@ const AdminDashboard = () => {
         try {
             await apiCall('/kullanici/ekle', 'POST', sakinForm, 'adminToken');
             triggerToast("Sakin kaydedildi.", "success");
-            setSakinForm({ BlokDaire: '', AdSoyad: '', Telefon: '', KullaniciAdi: '', Sifre: '' });
+            setSakinForm({ BlokDaire: '', AdSoyad: '', Telefon: '', Plaka: '', KullaniciAdi: '', Sifre: '' });
             fetchData();
         } catch (e) { triggerToast(e.message, "danger"); }
     };
 
     const handleSakinSil = async (id) => {
         if (!window.confirm("Emin misiniz?")) return;
-        try { await apiCall(`/kullanici/sil/${id}`, 'DELETE', null, 'adminToken'); triggerToast("Silindi.", "success"); fetchData(); } catch (e) { }
+        try { await apiCall(`/kullanici/sil/${id}`, 'DELETE', null, 'adminToken'); triggerToast("Silindi.", "success"); fetchData(); } catch (e) { triggerToast(e.message, "danger"); }
     };
 
     const handleTalepDurumUpdate = async (id, yeniDurum) => {
-        try { await apiCall(`/talepler/durum-guncelle/${id}`, 'PUT', { durum: parseInt(yeniDurum) }, 'adminToken'); triggerToast("Durum güncellendi.", "success"); fetchData(); } catch (e) { }
+        try { await apiCall(`/talepler/durum-guncelle/${id}`, 'PUT', { durum: parseInt(yeniDurum) }, 'adminToken'); triggerToast("Durum güncellendi.", "success"); fetchData(); } catch (e) { triggerToast(e.message, "danger"); }
     };
 
     const handleRezervasyonUpdate = async (id, yeniDurum) => {
-        try { await apiCall(`/rezervasyon/durum-guncelle/${id}`, 'PUT', { durum: parseInt(yeniDurum) }, 'adminToken'); triggerToast("Rezervasyon güncellendi.", "success"); fetchData(); } catch (e) { }
+        try { await apiCall(`/rezervasyon/durum-guncelle/${id}`, 'PUT', { durum: parseInt(yeniDurum) }, 'adminToken'); triggerToast("Rezervasyon güncellendi.", "success"); fetchData(); } catch (e) { triggerToast(e.message, "danger"); }
     };
 
     const handleBakimEkle = async () => {
@@ -96,7 +103,7 @@ const AdminDashboard = () => {
             triggerToast("Bakım eklendi.", "success");
             setBakimForm({ Tur: '', Tarih: '', Maliyet: '', Frekans: '1', Birim: 'Ay' });
             fetchData();
-        } catch (e) { }
+        } catch (e) { triggerToast(e.message, "danger"); }
     };
 
     const handleTedarikciEkle = async () => {
@@ -105,19 +112,26 @@ const AdminDashboard = () => {
             triggerToast("Usta eklendi.", "success");
             setTedarikciForm({ Isim: '', Alan: '', Tel: '' });
             fetchData();
-        } catch (e) { }
+        } catch (e) { triggerToast(e.message, "danger"); }
     };
 
     const handleDokumanYukle = async () => {
+        if (!dosya) return triggerToast("Lütfen bir dosya seçin.", "warning");
+        const formData = new FormData();
+        formData.append('isim', dokumanForm.Isim);
+        formData.append('erisimTipi', dokumanForm.ErisimTipi);
+        formData.append('dosya', dosya);
+
         try {
-            await apiCall('/dokuman/yukle', 'POST', { isim: dokumanForm.Isim, erisimTipi: dokumanForm.ErisimTipi }, 'adminToken');
+            await apiCall('/dokuman/yukle', 'POST', formData, 'adminToken');
             triggerToast("Belge yüklendi.", "success");
             setDokumanForm({ Isim: '', ErisimTipi: 'Herkese Açık' });
+            setDosya(null);
+            if (dosyaInputRef.current) dosyaInputRef.current.value = "";
             fetchData();
-        } catch (e) { }
+        } catch (e) { triggerToast(e.message, "danger"); }
     };
 
-    // --- MENÜ LİSTESİ ---
     const sidebarLinks = [
         { id: 'dashboard', label: 'Yönetim Özeti', icon: 'fa-chart-pie' },
         { id: 'aidatlar', label: 'Aidat & Finans', icon: 'fa-coins' },
@@ -126,8 +140,7 @@ const AdminDashboard = () => {
         { id: 'rezervasyonlar', label: 'Rezervasyonlar', icon: 'fa-calendar-check' },
         { id: 'bakimlar', label: 'Planlı Bakımlar', icon: 'fa-wrench' },
         { id: 'tedarikciler', label: 'Usta & Tedarikçi', icon: 'fa-hard-hat' },
-        { id: 'dokumanlar', label: 'Sistem Belgeleri', icon: 'fa-file-pdf' },
-        { id: 'giriscikis', label: 'Güvenlik Logları', icon: 'fa-shield-alt' }
+        { id: 'dokumanlar', label: 'Sistem Belgeleri', icon: 'fa-file-pdf' }
     ];
 
     return (
@@ -146,7 +159,6 @@ const AdminDashboard = () => {
                     </div>
                 </header>
 
-                {/* YÖNETİM ÖZETİ (DASHBOARD) */}
                 {activeTab === 'dashboard' && (
                     <div className="view-section active">
                         <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
@@ -160,7 +172,7 @@ const AdminDashboard = () => {
                             </div>
                             <div className="data-card" style={{ margin: 0, textAlign: 'center', borderBottom: '4px solid var(--info)' }}>
                                 <h4 style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Aktif Talepler</h4>
-                                <h2 style={{ fontSize: '2rem', marginTop: '10px', color: 'var(--primary-color)' }}>{arizalar.length}</h2>
+                                <h2 style={{ fontSize: '2rem', marginTop: '10px', color: 'var(--primary-color)' }}>{arizalar.filter(a => a.durum !== 'Çözüldü').length}</h2>
                             </div>
                             <div className="data-card" style={{ margin: 0, textAlign: 'center', borderBottom: '4px solid var(--success)' }}>
                                 <h4 style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Toplam Daire / Doluluk</h4>
@@ -171,14 +183,16 @@ const AdminDashboard = () => {
                         <div className="dashboard-grid" style={{ gridTemplateColumns: '2fr 1fr', marginTop: '25px' }}>
                             <div className="data-card" style={{ margin: 0 }}>
                                 <h3><i className="fas fa-list"></i> Son Finansal Hareketler</h3>
-                                <table className="data-table">
-                                    <thead><tr><th>Tarih</th><th>Açıklama</th><th>Tip</th><th>Tutar</th></tr></thead>
-                                    <tbody>
-                                        {finans.slice(0,5).map((f, i) => (
-                                            <tr key={i}><td>{f.tarih}</td><td>{f.aciklama}</td><td><span className={`badge ${f.tip==='Gelir'?'success':'danger'}`}>{f.tip}</span></td><td><strong>{f.tutar} ₺</strong></td></tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                <div className="table-responsive">
+                                    <table className="data-table">
+                                        <thead><tr><th>Sakin</th><th>Açıklama</th><th>Tutar</th><th>Durum</th></tr></thead>
+                                        <tbody>
+                                            {finans.slice(0,5).map((f, i) => (
+                                                <tr key={i}><td>{f.kullaniciAdi}</td><td>{f.aciklama}</td><td><strong>{f.tutar} ₺</strong></td><td><span className={`badge ${f.durum==='Ödendi'?'success':'danger'}`}>{f.durum}</span></td></tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                             <div className="data-card" style={{ margin: 0 }}>
                                 <h3><i className="fas fa-bolt"></i> Hızlı Aksiyonlar</h3>
@@ -190,13 +204,12 @@ const AdminDashboard = () => {
                     </div>
                 )}
 
-                {/* AİDATLAR */}
                 {activeTab === 'aidatlar' && (
                     <div className="view-section active">
                         <div className="dashboard-grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
                             <div className="data-card">
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <h3><i className="fas fa-coins"></i> Manuel Aidat Belirleme</h3>
+                                    <h3><i className="fas fa-coins"></i> Toplu Aidat Borçlandırma</h3>
                                     <button className="btn-action" style={{ width: 'auto', background: 'var(--success)', padding: '8px 15px' }} onClick={handleAidatBorclandir}>Borçlandır</button>
                                 </div>
                                 <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
@@ -221,108 +234,128 @@ const AdminDashboard = () => {
                                 <button className={`inner-tab-btn ${innerTab==='tab-genel'?'active':''}`} onClick={()=>setInnerTab('tab-genel')}>Genel Durum</button>
                             </div>
                             {innerTab === 'tab-genel' && (
-                                <table className="data-table">
-                                    <thead><tr><th>Daire</th><th>Sakin</th><th>Dönem Borcu</th><th>Durum</th></tr></thead>
-                                    <tbody>
-                                        {finans.map((f, i) => (
-                                            <tr key={i}><td>{f.blokDaire}</td><td>{f.kullaniciAdi}</td><td><strong>{f.tutar} ₺</strong></td><td><span className={`badge ${f.durum==='Ödendi'?'success':'danger'}`}>{f.durum}</span></td></tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+                                <div className="table-responsive">
+                                    <table className="data-table">
+                                        <thead><tr><th>Daire</th><th>Sakin</th><th>Dönem Borcu</th><th>Durum</th></tr></thead>
+                                        <tbody>
+                                            {finans.map((f, i) => (
+                                                <tr key={i}><td>{f.blokDaire}</td><td>{f.kullaniciAdi}</td><td><strong>{f.tutar} ₺</strong></td><td><span className={`badge ${f.durum==='Ödendi'?'success':'danger'}`}>{f.durum}</span></td></tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
                             )}
                         </div>
                     </div>
                 )}
 
-                {/* SAKİNLER & KAYITLAR */}
                 {activeTab === 'kayitlar' && (
                     <div className="view-section active">
                         <div className="data-card">
                             <h3><i className="fas fa-user-plus"></i> Yeni Sakin ve Sistem Hesabı Oluştur</h3>
-                            <div className="dashboard-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr', marginTop: '15px', gap: '15px' }}>
+                            <div className="dashboard-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr', marginTop: '15px', gap: '15px' }}>
                                 <div className="input-wrapper" style={{ margin: 0 }}><label>Blok / Kapı No</label><input type="text" className="form-control" value={sakinForm.BlokDaire} onChange={e=>setSakinForm({...sakinForm, BlokDaire:e.target.value})} /></div>
                                 <div className="input-wrapper" style={{ margin: 0 }}><label>Ad Soyad</label><input type="text" className="form-control" value={sakinForm.AdSoyad} onChange={e=>setSakinForm({...sakinForm, AdSoyad:e.target.value})} /></div>
                                 <div className="input-wrapper" style={{ margin: 0 }}><label>Telefon</label><input type="text" className="form-control" value={sakinForm.Telefon} onChange={e=>setSakinForm({...sakinForm, Telefon:e.target.value})} /></div>
-                                <div className="input-wrapper" style={{ margin: 0 }}><label>Kullanıcı Adı</label><input type="text" className="form-control" value={sakinForm.KullaniciAdi} onChange={e=>setSakinForm({...sakinForm, KullaniciAdi:e.target.value})} /></div>
+                                <div className="input-wrapper" style={{ margin: 0 }}><label>Araç Plakası</label><input type="text" className="form-control" value={sakinForm.Plaka} onChange={e=>setSakinForm({...sakinForm, Plaka:e.target.value})} /></div>
+                                <div className="input-wrapper" style={{ margin: 0 }}><label>Sistem Kullanıcı Adı</label><input type="text" className="form-control" value={sakinForm.KullaniciAdi} onChange={e=>setSakinForm({...sakinForm, KullaniciAdi:e.target.value})} /></div>
                                 <div className="input-wrapper" style={{ margin: 0 }}><label>Geçici Şifre</label><input type="password" className="form-control" value={sakinForm.Sifre} onChange={e=>setSakinForm({...sakinForm, Sifre:e.target.value})} /></div>
-                                <div style={{ gridColumn: 'span 3', display: 'flex', alignItems: 'flex-end' }}>
+                                <div style={{ gridColumn: 'span 3', display: 'flex', justifyContent: 'flex-end' }}>
                                     <button className="btn-action" style={{ width: 'auto' }} onClick={handleSakinKaydet}>Hesabı ve Sakini Kaydet</button>
                                 </div>
                             </div>
                         </div>
                         <div className="data-card">
-                            <table className="data-table">
-                                <thead><tr><th>Hesap ID</th><th>Kullanıcı Adı</th><th>Blok/Daire</th><th>Sakin Adı</th><th>Telefon</th><th>Durum</th><th>İşlem</th></tr></thead>
-                                <tbody>
-                                    {kayitlar.map(k => (
-                                        <tr key={k.id}>
-                                            <td><strong>#{k.id}</strong></td><td>{k.kullaniciAdi}</td><td>{k.blokDaire}</td><td>{k.adSoyad}</td><td>{k.telefon}</td>
-                                            <td><span className={`badge ${k.aktifMi?'success':'danger'}`}>{k.aktifMi?'Aktif':'Pasif'}</span></td>
-                                            <td><button className="btn-sm btn-delete" onClick={()=>handleSakinSil(k.id)}><i className="fas fa-trash"></i> Sil</button></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                            <div className="table-responsive">
+                                <table className="data-table">
+                                    <thead><tr><th>Daire</th><th>Sakin Adı</th><th>Telefon</th><th>Plaka</th><th>Kullanıcı Adı</th><th>İşlem</th></tr></thead>
+                                    <tbody>
+                                        {kayitlar.map(k => (
+                                            <tr key={k.id}>
+                                                <td><strong>{k.blokDaire}</strong></td><td>{k.adSoyad}</td><td>{k.telefon}</td><td>{k.plaka || '-'}</td><td>{k.kullaniciAdi}</td>
+                                                <td><button className="btn-sm btn-delete" onClick={()=>handleSakinSil(k.id)}><i className="fas fa-trash"></i> Sil</button></td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 )}
 
-                {/* ARIZALAR / TALEPLER */}
                 {activeTab === 'arizalar' && (
                     <div className="view-section active">
                         <div className="data-card">
                             <h3><i className="fas fa-brain"></i> Gelen Arıza Biletleri (NLP Destekli)</h3>
                             <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '15px' }}>Sistem, model ile gelen mesajların aciliyetini ve duygu durumunu saptar.</p>
-                            <table className="data-table">
-                                <thead><tr><th>Daire/ID</th><th>Tarih</th><th>NLP Kategori</th><th>Aciliyet</th><th>Duygu Durumu</th><th>İşlem</th><th>Aksiyon</th></tr></thead>
-                                <tbody>
-                                    {arizalar.map(a => (
-                                        <tr key={a.id}>
-                                            <td>{a.blokDaire} / #{a.id}</td><td>{a.tarih}</td><td><strong>{a.kategori}</strong></td>
-                                            <td><span className={`badge ${a.aciliyet==='Yuksek'?'danger':'info'}`}>{a.aciliyet}</span></td><td>{a.duyguDurumu}</td>
-                                            <td>
-                                                <select className="form-control" style={{ width: 'auto', padding: '5px', margin: 0 }} value={['Inceleniyor','IslemeAlindi','Cozuldu'].indexOf(a.durum)} onChange={(e) => handleTalepDurumUpdate(a.id, e.target.value)}>
-                                                    <option value="0">İnceleniyor</option><option value="1">İşleme Alındı</option><option value="2">Çözüldü</option>
-                                                </select>
-                                            </td>
-                                            <td><button className="btn-sm" style={{background:'var(--info)'}} onClick={() => setNlpModalData(a)}><i className="fas fa-eye"></i> İncele</button></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                            <div className="table-responsive">
+                                <table className="data-table">
+                                    <thead><tr><th>Daire</th><th>Tarih</th><th>NLP Kategori</th><th>Aciliyet</th><th>Duygu Durumu</th><th>İşlem (Durum)</th><th>Aksiyon</th></tr></thead>
+                                    <tbody>
+                                        {arizalar.map(a => (
+                                            <tr key={a.id}>
+                                                <td>{a.blokDaire}</td><td>{a.tarih}</td><td><strong>{a.kategori}</strong></td>
+                                                <td><span className={`badge ${a.aciliyet==='Yuksek'?'danger':'info'}`}>{a.aciliyet}</span></td><td>{a.duyguDurumu}</td>
+                                                <td>
+                                                    <select className="form-control" style={{ width: 'auto', padding: '5px', margin: 0 }} value={['İnceleniyor','İşleme Alındı','Çözüldü'].indexOf(a.durum)} onChange={(e) => handleTalepDurumUpdate(a.id, e.target.value)}>
+                                                        <option value="0">İnceleniyor</option><option value="1">İşleme Alındı</option><option value="2">Çözüldü</option>
+                                                    </select>
+                                                </td>
+                                                <td><button className="btn-sm" style={{background:'var(--info)'}} onClick={() => setNlpModalData(a)}><i className="fas fa-eye"></i> İncele</button></td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 )}
 
-                {/* REZERVASYONLAR */}
                 {activeTab === 'rezervasyonlar' && (
                     <div className="view-section active">
-                        <div className="data-card">
-                            <h3>Tüm Rezervasyon Geçmişi ve Onay Bekleyenler</h3>
-                            <table className="data-table">
-                                <thead><tr><th>Tesis</th><th>Sakin (Daire)</th><th>Tarih & Saat</th><th>Durum</th><th>İşlem</th></tr></thead>
-                                <tbody>
-                                    {rezervasyonlar.map(r => (
-                                        <tr key={r.id}>
-                                            <td>{r.tesisAdi}</td><td>{r.kullaniciAdi}</td><td>{r.tarih} - {r.saatAraligi}</td>
-                                            <td><span className={`badge ${r.durum==='Onaylandi'?'success':r.durum==='Reddedildi'?'danger':'warning'}`}>{r.durum}</span></td>
-                                            <td>
-                                                {r.durum === 'Bekliyor' ? (
-                                                    <>
-                                                        <button className="btn-sm" style={{background:'var(--success)'}} onClick={()=>handleRezervasyonUpdate(r.id, 1)}>Kabul</button>
-                                                        <button className="btn-sm btn-delete" onClick={()=>handleRezervasyonUpdate(r.id, 2)}>Red</button>
-                                                    </>
-                                                ) : <span style={{fontSize:'0.8rem', color:'var(--text-muted)'}}>Tamamlandı</span>}
-                                            </td>
-                                        </tr>
+                        <div className="dashboard-grid">
+                            <div className="data-card" style={{ gridColumn: '1 / -1' }}>
+                                <h3><i className="fas fa-calendar-alt"></i> Rezervasyon Ajandası (Onaylı)</h3>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginTop: '15px' }}>
+                                    {rezervasyonlar.filter(r => r.durum === 'Onaylandı').length === 0 ? <p style={{color:'var(--text-muted)'}}>Aktif onaylanmış rezervasyon yok.</p> :
+                                    rezervasyonlar.filter(r => r.durum === 'Onaylandı').map((r, i) => (
+                                        <div key={i} style={{ background: 'var(--bg-light)', padding: '15px', borderRadius: '10px', minWidth: '250px', borderLeft: '4px solid var(--info)' }}>
+                                            <h4 style={{ color: 'var(--primary-color)', marginBottom: '5px' }}>{r.tarih}</h4>
+                                            <p style={{ fontWeight: 'bold', color: 'var(--accent-color)' }}><i className="fas fa-clock"></i> {r.saatAraligi}</p>
+                                            <p style={{ fontSize: '0.9rem', marginTop: '5px' }}>{r.tesisAdi}</p>
+                                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '5px' }}><i className="fas fa-user"></i> {r.kullaniciAdi}</p>
+                                        </div>
                                     ))}
-                                </tbody>
-                            </table>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="data-card">
+                            <h3>Tüm Rezervasyon Geçmişi ve Bekleyenler</h3>
+                            <div className="table-responsive">
+                                <table className="data-table">
+                                    <thead><tr><th>Tesis</th><th>Sakin</th><th>Tarih & Saat</th><th>Durum</th><th>İşlem</th></tr></thead>
+                                    <tbody>
+                                        {rezervasyonlar.map(r => (
+                                            <tr key={r.id}>
+                                                <td>{r.tesisAdi}</td><td>{r.kullaniciAdi}</td><td>{r.tarih} - {r.saatAraligi}</td>
+                                                <td><span className={`badge ${r.durum==='Onaylandı'?'success':r.durum==='Reddedildi'?'danger':'warning'}`}>{r.durum}</span></td>
+                                                <td>
+                                                    {r.durum === 'Bekliyor' ? (
+                                                        <>
+                                                            <button className="btn-sm" style={{background:'var(--success)', marginRight:'5px'}} onClick={()=>handleRezervasyonUpdate(r.id, 1)}>Kabul</button>
+                                                            <button className="btn-sm btn-delete" onClick={()=>handleRezervasyonUpdate(r.id, 2)}>Red</button>
+                                                        </>
+                                                    ) : <span style={{fontSize:'0.8rem', color:'var(--text-muted)'}}>Tamamlandı</span>}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 )}
 
-                {/* BAKIMLAR */}
                 {activeTab === 'bakimlar' && (
                     <div className="view-section active">
                         <div className="data-card">
@@ -343,19 +376,26 @@ const AdminDashboard = () => {
                             </div>
                         </div>
                         <div className="data-card">
-                            <table className="data-table">
-                                <thead><tr><th>Bakım Türü</th><th>Tarih</th><th>Maliyet</th><th>Periyot</th><th>Durum</th><th>İşlem</th></tr></thead>
-                                <tbody>
-                                    {bakimlar.map(b => (
-                                        <tr key={b.id}><td>{b.tur}</td><td>{b.tarih}</td><td>{b.maliyet} ₺</td><td>{b.periyot}</td><td>{b.durum}</td><td><button className="btn-sm btn-delete" onClick={async()=>{await apiCall(`/bakim/sil/${b.id}`,'DELETE',null,'adminToken'); fetchData();}}><i className="fas fa-trash"></i></button></td></tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                            <div className="table-responsive">
+                                <table className="data-table">
+                                    <thead><tr><th>Bakım Türü</th><th>Tarih</th><th>Maliyet</th><th>Periyot</th><th>İşlem</th></tr></thead>
+                                    <tbody>
+                                        {bakimlar.map(b => (
+                                            <tr key={b.id}>
+                                                <td>{b.tur}</td>
+                                                <td>{b.tarih} {getZamanDurumu(b.tarih)}</td>
+                                                <td>{b.maliyet} ₺</td>
+                                                <td><span style={{ fontWeight: 'bold' }}>{b.periyot}</span> aralıklarla</td>
+                                                <td><button className="btn-sm btn-delete" onClick={async()=>{await apiCall(`/bakim/sil/${b.id}`,'DELETE',null,'adminToken'); fetchData();}}><i className="fas fa-trash"></i></button></td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 )}
 
-                {/* TEDARİKÇİLER */}
                 {activeTab === 'tedarikciler' && (
                     <div className="view-section active">
                         <div className="data-card">
@@ -368,74 +408,59 @@ const AdminDashboard = () => {
                             </div>
                         </div>
                         <div className="data-card">
-                            <table className="data-table">
-                                <thead><tr><th>Firma / Usta Adı</th><th>Uzmanlık Alanı</th><th>İletişim</th><th>İşlem</th></tr></thead>
-                                <tbody>
-                                    {tedarikciler.map(t => (
-                                        <tr key={t.id}><td>{t.isim}</td><td>{t.alan}</td><td>{t.tel}</td><td><button className="btn-sm btn-delete" onClick={async()=>{await apiCall(`/tedarikci/sil/${t.id}`,'DELETE',null,'adminToken'); fetchData();}}><i className="fas fa-trash"></i></button></td></tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                            <div className="table-responsive">
+                                <table className="data-table">
+                                    <thead><tr><th>Firma / Usta Adı</th><th>Uzmanlık Alanı</th><th>İletişim</th><th>İşlem</th></tr></thead>
+                                    <tbody>
+                                        {tedarikciler.map(t => (
+                                            <tr key={t.id}><td>{t.isim}</td><td>{t.alan}</td><td>{t.tel}</td><td><button className="btn-sm btn-delete" onClick={async()=>{await apiCall(`/tedarikci/sil/${t.id}`,'DELETE',null,'adminToken'); fetchData();}}><i className="fas fa-trash"></i></button></td></tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 )}
 
-                {/* DOKÜMANLAR */}
                 {activeTab === 'dokumanlar' && (
                     <div className="view-section active">
                         <div className="data-card">
                             <h3><i className="fas fa-cloud-upload-alt"></i> Belge Yönetimi</h3>
                             <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', marginTop: '15px' }}>
-                                <div className="input-wrapper" style={{ margin: 0, flex: 2 }}><label>Belge Adı</label><input type="text" className="form-control" value={dokumanForm.Isim} onChange={e=>setDokumanForm({...dokumanForm, Isim:e.target.value})} /></div>
+                                <div className="input-wrapper" style={{ margin: 0, flex: 1 }}><label>Belge Adı</label><input type="text" className="form-control" value={dokumanForm.Isim} onChange={e=>setDokumanForm({...dokumanForm, Isim:e.target.value})} /></div>
+                                <div className="input-wrapper" style={{ margin: 0, flex: 1.5 }}><label>Dosya Seç</label>
+                                    <input type="file" ref={dosyaInputRef} className="form-control" onChange={(e)=>setDosya(e.target.files[0])} />
+                                </div>
                                 <div className="input-wrapper" style={{ margin: 0, flex: 1 }}><label>Görünürlük</label>
                                     <select className="form-control" value={dokumanForm.ErisimTipi} onChange={e=>setDokumanForm({...dokumanForm, ErisimTipi:e.target.value})}>
-                                        <option value="Yönetime Özel">Sadece Yönetim</option><option value="Herkese Açık">Sakinlere Açık (Public)</option>
+                                        <option value="Yönetime Özel">Sadece Yönetim</option><option value="Herkese Açık">Sakinlere Açık</option>
                                     </select>
                                 </div>
-                                <button className="btn-action" style={{ width: 'auto' }} onClick={handleDokumanYukle}>Sisteme Yükle</button>
+                                <button className="btn-action" style={{ width: 'auto' }} onClick={handleDokumanYukle}>Yükle</button>
                             </div>
                         </div>
                         <div className="data-card">
-                            <table className="data-table">
-                                <thead><tr><th>Belge Adı</th><th>Yükleme Tarihi</th><th>Erişim Tipi</th><th>İşlem</th></tr></thead>
-                                <tbody>
-                                    {dokumanlar.map(d => (
-                                        <tr key={d.id}>
-                                            <td><i className="far fa-file-pdf" style={{color:'var(--danger)'}}></i> {d.isim}</td><td>{d.yuklemeTarihi}</td><td><span className="badge info">{d.erisimTipi}</span></td>
-                                            <td>
-                                                <button className="btn-sm-gray" onClick={()=>window.open(`http://localhost:5000/api/dokuman/indir/${d.id}`, '_blank')}><i className="fas fa-download"></i> İndir</button>
-                                                <button className="btn-sm btn-delete" onClick={async()=>{await apiCall(`/dokuman/sil/${d.id}`,'DELETE',null,'adminToken'); fetchData();}}><i className="fas fa-trash"></i> Sil</button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-
-                {/* GÜVENLİK LOGLARI (Sadece Mock Frontend Görüntüsü Olarak İstenmişti) */}
-                {activeTab === 'giriscikis' && (
-                    <div className="view-section active">
-                        <div className="data-card">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                                <h3><i className="fas fa-video"></i> Güvenlik / Geçiş Logları</h3>
-                                <input type="text" className="form-control" placeholder="🔍 Loglarda ara..." value={searchTerm} onChange={e=>setSearchTerm(e.target.value)} style={{ margin: 0, width: '250px' }} />
+                            <div className="table-responsive">
+                                <table className="data-table">
+                                    <thead><tr><th>Belge Adı</th><th>Yükleme Tarihi</th><th>Erişim Tipi</th><th>İşlem</th></tr></thead>
+                                    <tbody>
+                                        {dokumanlar.map(d => (
+                                            <tr key={d.id}>
+                                                <td><i className="far fa-file-pdf" style={{color:'var(--danger)'}}></i> {d.isim}</td><td>{d.yuklemeTarihi}</td><td><span className="badge info">{d.erisimTipi}</span></td>
+                                                <td>
+                                                    <button className="btn-sm-gray" onClick={() => downloadFile(`/dokuman/indir/${d.id}`, d.isim, 'adminToken')}><i className="fas fa-download"></i> İndir</button>
+                                                    <button className="btn-sm btn-delete" onClick={async()=>{await apiCall(`/dokuman/sil/${d.id}`,'DELETE',null,'adminToken'); fetchData();}}><i className="fas fa-trash"></i> Sil</button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
-                            <table className="data-table">
-                                <thead><tr><th>Tarih & Zaman</th><th>Kişi / Sistem ID</th><th>Tip</th><th>Nokta</th></tr></thead>
-                                <tbody>
-                                    {[{t:'Bugün 08:15',k:'Tuğba Yılmaz',tp:'Araç Girişi',n:'Otopark A Kapısı'},{t:'Bugün 09:20',k:'Kargo Şirketi',tp:'Yaya Girişi',n:'Ana Nizamıye'}]
-                                    .filter(lg => lg.k.toLowerCase().includes(searchTerm.toLowerCase()) || lg.tp.toLowerCase().includes(searchTerm.toLowerCase()))
-                                    .map((lg,i) => <tr key={i}><td>{lg.t}</td><td>{lg.k}</td><td>{lg.tp}</td><td>{lg.n}</td></tr>)}
-                                </tbody>
-                            </table>
                         </div>
                     </div>
                 )}
             </div>
 
-            {/* NLP MODAL */}
             {nlpModalData && (
                 <div className="modal-overlay">
                     <div className="modal" style={{ maxWidth: '600px' }}>

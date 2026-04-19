@@ -2,14 +2,19 @@ const API_BASE_URL = 'http://localhost:5000/api';
 
 export const apiCall = async (endpoint, method = 'GET', body = null, role = 'adminToken') => {
     const token = localStorage.getItem(role);
-    const headers = { 'Content-Type': 'application/json' };
+    const headers = {};
     
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
     }
 
+    // Eğer body FormData değilse JSON olarak ayarla (Dosya yükleme çakışmasını önler)
+    if (!(body instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
+    }
+
     const config = { method, headers };
-    if (body) config.body = JSON.stringify(body);
+    if (body) config.body = body instanceof FormData ? body : JSON.stringify(body);
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
     
@@ -19,11 +24,32 @@ export const apiCall = async (endpoint, method = 'GET', body = null, role = 'adm
         throw new Error('Oturum süresi doldu');
     }
 
-    // Eğer cevap boşsa veya JSON değilse hata fırlatmasını engelle
     const isJson = response.headers.get('content-type')?.includes('application/json');
-    const data = isJson ? await response.json() : null;
-
-    if (!response.ok) throw new Error(data?.mesaj || 'Bir hata oluştu');
     
-    return data;
+    if (isJson) {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data?.mesaj || 'Bir hata oluştu');
+        return data;
+    } else {
+        if (!response.ok) throw new Error('Bir hata oluştu');
+        return response; // Dosya indirme işlemleri için raw response döner
+    }
+};
+
+// Dosya indirme fonksiyonu eklendi
+export const downloadFile = async (endpoint, filename, role = 'adminToken') => {
+    try {
+        const response = await apiCall(endpoint, 'GET', null, role);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    } catch (error) {
+        throw new Error('Dosya indirilirken hata oluştu.');
+    }
 };

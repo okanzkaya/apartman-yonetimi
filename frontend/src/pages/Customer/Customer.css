@@ -64,3 +64,85 @@
 .modal h3 { color: var(--primary-color); margin-bottom: 20px; border-bottom: 2px solid var(--accent-color); padding-bottom: 10px; }
 .form-group { margin-bottom: 15px; }
 .form-group label { font-weight: 600; font-size: 0.9rem; }
+
+/* TABLO TAŞMA DÜZELTMESİ */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* MODERN TAKVİM TASARIMI */
+.calendar-sim { 
+    display: grid; 
+    grid-template-columns: repeat(7, 1fr); 
+    gap: 10px; 
+    margin-top: 15px; 
+    background: var(--bg-light); 
+    padding: 15px; 
+    border-radius: 12px; 
+    border: 1px solid var(--border); 
+}
+.day { 
+    aspect-ratio: 1; /* Tam kare yapar */
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center; 
+    background: var(--white); 
+    border-radius: 8px; 
+    cursor: pointer; 
+    transition: all 0.2s ease; 
+    border: 1px solid var(--border); 
+    box-shadow: var(--shadow-sm); 
+}
+.day:hover { 
+    transform: translateY(-2px); 
+    box-shadow: var(--shadow-md); 
+    border-color: var(--accent-color); 
+}
+.day.active { 
+    background: var(--primary-color); 
+    color: var(--white); 
+    border-color: var(--primary-color); 
+    transform: scale(1.05); 
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+}
+.day-number {
+    font-size: 1rem;
+    font-weight: 700;
+}
+.day-name { 
+    font-size: 0.65rem; 
+    color: var(--text-muted); 
+    margin-top: 2px; 
+    font-weight: 500; 
+    text-transform: uppercase;
+}
+.day.active .day-name { 
+    color: rgba(255,255,255,0.7); 
+}
+
+/* LOGIN GEOMETRİK ŞEKİLLER (Admin.css içine de ekle) */
+.login-page-wrapper {
+    position: relative;
+    overflow: hidden;
+    background: var(--bg-light); /* Arkaplanı açtık, şekiller öne çıkacak */
+}
+.login-geo-1 { 
+    position: absolute; width: 500px; height: 500px; 
+    background: linear-gradient(135deg, var(--accent-color), transparent); 
+    border-radius: 50%; top: -150px; left: -100px; 
+    opacity: 0.15; filter: blur(60px); z-index: 1;
+}
+.login-geo-2 { 
+    position: absolute; width: 400px; height: 400px; 
+    background: linear-gradient(135deg, var(--primary-color), transparent); 
+    border-radius: 50%; bottom: -100px; right: -100px; 
+    opacity: 0.15; filter: blur(60px); z-index: 1;
+}
+.login-card {
+    position: relative;
+    z-index: 10;
+    border: 1px solid rgba(255,255,255,0.4);
+}

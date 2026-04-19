@@ -1,6 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const { sequelize, Kullanici, FinansHareketi, Talep, Rezervasyon, PlanliBakim, Tedarikci, Dokuman, initDB, Op } = require('./database');
 
 const app = express();
@@ -9,11 +12,23 @@ app.use(express.json());
 
 const JWT_SECRET = 'ElitYonetimSuperGizliAnahtar1234567890!!';
 
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const dir = './uploads';
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+        cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+        cb(null, Date.now() + '-' + file.originalname);
+    }
+});
+const upload = multer({ storage });
+
 const RolEnum = { 0: 'Sakin', 1: 'Yonetici' };
 const FinansTipiEnum = { 0: 'Gelir', 1: 'Gider' };
 const TalepAciliyetEnum = { 0: 'Dusuk', 1: 'Orta', 2: 'Yuksek' };
-const TalepDurumuEnum = { 0: 'Inceleniyor', 1: 'IslemeAlindi', 2: 'Cozuldu' };
-const RezervasyonDurumuEnum = { 0: 'Bekliyor', 1: 'Onaylandi', 2: 'Reddedildi' };
+const TalepDurumuEnum = { 0: 'İnceleniyor', 1: 'İşleme Alındı', 2: 'Çözüldü' };
+const RezervasyonDurumuEnum = { 0: 'Bekliyor', 1: 'Onaylandı', 2: 'Reddedildi' };
 
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
@@ -39,28 +54,56 @@ app.post('/api/auth/login', async (req, res) => {
     if (!user || user.SifreHash !== Sifre) {
         return res.status(401).json({ mesaj: 'Geçersiz kullanıcı adı veya şifre.' });
     }
-
     const token = jwt.sign({ id: user.Id, Rol: user.Rol }, JWT_SECRET, { expiresIn: '12h' });
-    res.json({ token });
+    
+    // Rol bilgisi frontend'e yönlendirme için eklendi
+    res.json({ token, adSoyad: user.AdSoyad, blokDaire: user.BlokDaire, id: user.Id, rol: user.Rol });
 });
 
-// --- FINANS ---
-app.get('/api/finans/ekstre', authenticateToken, async (req, res) => {
-    const hareketler = await FinansHareketi.findAll({
-        where: { KullaniciId: req.user.id }, order: [['Tarih', 'DESC']]
-    });
-    res.json(hareketler.map(f => ({
-        id: f.Id, donem: f.Donem, aciklama: f.Aciklama, tutar: f.Tutar, durum: f.Durum
+// --- KULLANICI / SAKİN ---
+app.get('/api/kullanici/listele', authenticateToken, requireAdmin, async (req, res) => {
+    const kullanicilar = await Kullanici.findAll({ where: { Rol: 0 } }); 
+    res.json(kullanicilar.map(k => ({
+        id: k.Id, kullaniciAdi: k.KullaniciAdi, adSoyad: k.AdSoyad, blokDaire: k.BlokDaire, telefon: k.Telefon, plaka: k.Plaka, aktifMi: k.AktifMi
     })));
 });
 
+app.post('/api/kullanici/ekle', authenticateToken, requireAdmin, async (req, res) => {
+    const { KullaniciAdi, AdSoyad, BlokDaire, Telefon, Plaka, Sifre } = req.body;
+    try {
+        const mevcut = await Kullanici.findOne({ where: { KullaniciAdi } });
+        if (mevcut) return res.status(400).json({ mesaj: "Bu kullanıcı adı alınmış." });
+        const yeni = await Kullanici.create({ KullaniciAdi, SifreHash: Sifre || '123456', AdSoyad, BlokDaire, Telefon, Plaka, Rol: 0, AktifMi: true });
+        res.json({ mesaj: "Sakin eklendi.", id: yeni.Id });
+    } catch (e) { res.status(500).json({ mesaj: "Hata oluştu." }); }
+});
+
+app.delete('/api/kullanici/sil/:id', authenticateToken, requireAdmin, async (req, res) => {
+    await Kullanici.destroy({ where: { Id: req.params.id } });
+    res.json({ mesaj: "Sakin başarıyla silindi." });
+});
+
+app.get('/api/kullanici/profil', authenticateToken, async (req, res) => {
+    const user = await Kullanici.findByPk(req.user.id);
+    res.json({ id: user.Id, kullaniciAdi: user.KullaniciAdi, adSoyad: user.AdSoyad, blokDaire: user.BlokDaire, telefon: user.Telefon, plaka: user.Plaka });
+});
+
+app.put('/api/kullanici/profil-guncelle', authenticateToken, async (req, res) => {
+    const { Telefon, Plaka } = req.body;
+    await Kullanici.update({ Telefon, Plaka }, { where: { Id: req.user.id } });
+    res.json({ mesaj: "Profil başarıyla güncellendi." });
+});
+
+// --- FİNANS ---
+app.get('/api/finans/ekstre', authenticateToken, async (req, res) => {
+    const hareketler = await FinansHareketi.findAll({ where: { KullaniciId: req.user.id }, order: [['Tarih', 'DESC']] });
+    res.json(hareketler.map(f => ({ id: f.Id, donem: f.Donem, aciklama: f.Aciklama, tutar: f.Tutar, durum: f.Durum })));
+});
+
 app.post('/api/finans/ode', authenticateToken, async (req, res) => {
-    const hareketId = req.body.id; // JSON Hatası Düzeltildi (Obje olarak bekleniyor)
-    const hareket = await FinansHareketi.findByPk(hareketId);
-    
+    const hareket = await FinansHareketi.findByPk(req.body.id);
     if (!hareket || hareket.KullaniciId !== req.user.id) return res.status(404).json({ mesaj: "Fatura bulunamadı." });
     if (hareket.Durum === 'Ödendi') return res.status(400).json({ mesaj: "Bu borç zaten ödenmiş." });
-
     hareket.Durum = 'Ödendi';
     await hareket.save();
     res.json({ mesaj: "Ödeme işlemi başarıyla gerçekleşti." });
@@ -69,18 +112,22 @@ app.post('/api/finans/ode', authenticateToken, async (req, res) => {
 app.get('/api/finans/hepsini-getir', authenticateToken, requireAdmin, async (req, res) => {
     const hareketler = await FinansHareketi.findAll({ include: Kullanici, order: [['Tarih', 'DESC']] });
     res.json(hareketler.map(f => ({
-        id: f.Id, 
-        kullaniciAdi: f.Kullanici ? f.Kullanici.AdSoyad : "Ortak Gider",
-        blokDaire: f.Kullanici ? f.Kullanici.BlokDaire : "-",
-        tarih: new Date(f.Tarih).toLocaleDateString('tr-TR'),
-        donem: f.Donem, aciklama: f.Aciklama, tip: FinansTipiEnum[f.Tip], tutar: f.Tutar, durum: f.Durum
+        id: f.Id, kullaniciAdi: f.Kullanici ? f.Kullanici.AdSoyad : "Ortak Gider", blokDaire: f.Kullanici ? f.Kullanici.BlokDaire : "-",
+        tarih: new Date(f.Tarih).toLocaleDateString('tr-TR'), donem: f.Donem, aciklama: f.Aciklama, tip: FinansTipiEnum[f.Tip], tutar: f.Tutar, durum: f.Durum
     })));
 });
 
 app.post('/api/finans/borclandir', authenticateToken, requireAdmin, async (req, res) => {
     const { KullaniciId, Donem, Aciklama, Tutar } = req.body;
     try {
-        await FinansHareketi.create({ KullaniciId, Tarih: new Date(), Donem, Aciklama, Tip: 0, Tutar, Durum: 'Ödenmedi' });
+        if(KullaniciId === 'ALL') {
+            const sakinler = await Kullanici.findAll({where:{Rol: 0}});
+            for (const s of sakinler) {
+                await FinansHareketi.create({ KullaniciId: s.Id, Tarih: new Date(), Donem, Aciklama, Tip: 0, Tutar, Durum: 'Ödenmedi' });
+            }
+        } else {
+            await FinansHareketi.create({ KullaniciId, Tarih: new Date(), Donem, Aciklama, Tip: 0, Tutar, Durum: 'Ödenmedi' });
+        }
         res.json({ mesaj: "Borçlandırma başarılı." });
     } catch (error) { res.status(500).json({ mesaj: "Hata oluştu." }); }
 });
@@ -89,35 +136,25 @@ app.post('/api/finans/borclandir', authenticateToken, requireAdmin, async (req, 
 app.post('/api/rezervasyon/yap', authenticateToken, async (req, res) => {
     const { TesisAdi, SaatAraligi, Tarih } = req.body;
     const rezerveTarihi = new Date(Tarih);
-    const transaction = await sequelize.transaction();
-    try {
-        const doluMu = await Rezervasyon.findOne({ where: { TesisAdi, SaatAraligi, Durum: { [Op.ne]: 2 } }, transaction });
-        if (doluMu && new Date(doluMu.Tarih).toDateString() === rezerveTarihi.toDateString()) {
-            await transaction.rollback();
-            return res.status(400).json({ mesaj: "Seçtiğiniz tesis bu saat aralığında zaten dolu." });
-        }
-        await Rezervasyon.create({ KullaniciId: req.user.id, TesisAdi, Tarih: rezerveTarihi, SaatAraligi, Durum: 0 }, { transaction });
-        await transaction.commit();
-        res.json({ mesaj: "Rezervasyon talebiniz başarıyla oluşturuldu." });
-    } catch (err) { await transaction.rollback(); res.status(500).json({ mesaj: "Hata oluştu." }); }
+    const doluMu = await Rezervasyon.findOne({ where: { TesisAdi, SaatAraligi, Durum: { [Op.ne]: 2 } } });
+    if (doluMu && new Date(doluMu.Tarih).toDateString() === rezerveTarihi.toDateString()) {
+        return res.status(400).json({ mesaj: "Seçtiğiniz tesis bu saat aralığında dolu." });
+    }
+    await Rezervasyon.create({ KullaniciId: req.user.id, TesisAdi, Tarih: rezerveTarihi, SaatAraligi, Durum: 0 });
+    res.json({ mesaj: "Rezervasyon talebiniz oluşturuldu." });
 });
 
 app.get('/api/rezervasyon/listele', authenticateToken, async (req, res) => {
     const rezervasyonlar = await Rezervasyon.findAll({ where: { KullaniciId: req.user.id }, order: [['Tarih', 'DESC']] });
-    res.json(rezervasyonlar.map(r => ({
-        id: r.Id, tesisAdi: r.TesisAdi, tarih: new Date(r.Tarih).toLocaleDateString('tr-TR'), saatAraligi: r.SaatAraligi, durum: RezervasyonDurumuEnum[r.Durum]
-    })));
+    res.json(rezervasyonlar.map(r => ({ id: r.Id, tesisAdi: r.TesisAdi, tarih: new Date(r.Tarih).toLocaleDateString('tr-TR'), saatAraligi: r.SaatAraligi, durum: RezervasyonDurumuEnum[r.Durum] })));
 });
 
 app.get('/api/rezervasyon/hepsini-getir', authenticateToken, requireAdmin, async (req, res) => {
     const rezervasyonlar = await Rezervasyon.findAll({ include: Kullanici, order: [['Tarih', 'DESC']] });
-    res.json(rezervasyonlar.map(r => ({
-        id: r.Id, kullaniciAdi: r.Kullanici.AdSoyad, tesisAdi: r.TesisAdi, tarih: new Date(r.Tarih).toLocaleDateString('tr-TR'), saatAraligi: r.SaatAraligi, durum: RezervasyonDurumuEnum[r.Durum]
-    })));
+    res.json(rezervasyonlar.map(r => ({ id: r.Id, kullaniciAdi: r.Kullanici.AdSoyad, tesisAdi: r.TesisAdi, tarih: new Date(r.Tarih).toLocaleDateString('tr-TR'), saatAraligi: r.SaatAraligi, durum: RezervasyonDurumuEnum[r.Durum] })));
 });
 
 app.put('/api/rezervasyon/durum-guncelle/:id', authenticateToken, requireAdmin, async (req, res) => {
-    // JSON Hatası Düzeltildi (Obje içinden 'durum' okunuyor)
     await Rezervasyon.update({ Durum: req.body.durum }, { where: { Id: req.params.id } });
     res.json({ mesaj: "Durum güncellendi." });
 });
@@ -127,11 +164,18 @@ app.post('/api/talepler/olustur', authenticateToken, async (req, res) => {
     const { Kategori, Aciklama } = req.body;
     let aciliyet = 0, duygu = 'Nötr'; 
     const text = Aciklama.toLowerCase();
-    if (text.includes('acil') || text.includes('tehlike') || text.includes('hemen')) { aciliyet = 2; duygu = 'Endişeli'; } 
-    else if (text.includes('lanet') || text.includes('yönetim') || text.includes('yine')) { duygu = 'Kızgın'; }
+    if (text.includes('acil') || text.includes('tehlike') || text.includes('hemen') || text.includes('patladı')) { aciliyet = 2; duygu = 'Endişeli'; } 
+    else if (text.includes('lanet') || text.includes('yönetim') || text.includes('bıktım')) { duygu = 'Kızgın'; }
 
-    const yeniTalep = await Talep.create({ KullaniciId: req.user.id, Kategori, HamMetin: Aciklama, Aciliyet: aciliyet, DuyguDurumu: duygu, Durum: 0 });
-    res.json({ mesaj: "Talebiniz iletildi.", talepId: yeniTalep.Id });
+    await Talep.create({ KullaniciId: req.user.id, Kategori, HamMetin: Aciklama, Aciliyet: aciliyet, DuyguDurumu: duygu, Durum: 0 });
+    res.json({ mesaj: "Talebiniz yönetime iletildi." });
+});
+
+app.get('/api/talepler/benimkiler', authenticateToken, async (req, res) => {
+    const talepler = await Talep.findAll({ where: { KullaniciId: req.user.id }, order: [['Tarih', 'DESC']] });
+    res.json(talepler.map(t => ({
+        id: t.Id, tarih: new Date(t.Tarih).toLocaleDateString('tr-TR'), kategori: t.Kategori, durum: TalepDurumuEnum[t.Durum], aciklama: t.HamMetin
+    })));
 });
 
 app.get('/api/talepler/hepsini-getir', authenticateToken, requireAdmin, async (req, res) => {
@@ -143,35 +187,40 @@ app.get('/api/talepler/hepsini-getir', authenticateToken, requireAdmin, async (r
 });
 
 app.put('/api/talepler/durum-guncelle/:id', authenticateToken, requireAdmin, async (req, res) => {
-    // JSON Hatası Düzeltildi
     await Talep.update({ Durum: req.body.durum }, { where: { Id: req.params.id } });
     res.json({ mesaj: "Talep durumu güncellendi." });
 });
 
-// --- KULLANICI / SAKİN ---
-app.get('/api/kullanici/listele', authenticateToken, requireAdmin, async (req, res) => {
-    const kullanicilar = await Kullanici.findAll({ where: { Rol: 0 } }); 
-    res.json(kullanicilar.map(k => ({
-        id: k.Id, kullaniciAdi: k.KullaniciAdi, adSoyad: k.AdSoyad, blokDaire: k.BlokDaire, telefon: k.Telefon, aktifMi: k.AktifMi
-    })));
+// --- DOKÜMANLAR ---
+app.post('/api/dokuman/yukle', authenticateToken, requireAdmin, upload.single('dosya'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ mesaj: "Lütfen bir dosya seçin." });
+    await Dokuman.create({ Isim: req.body.isim, ErisimTipi: req.body.erisimTipi, DosyaYolu: req.file.filename });
+    res.json({ mesaj: "Doküman başarıyla yüklendi." });
 });
 
-app.post('/api/kullanici/ekle', authenticateToken, requireAdmin, async (req, res) => {
-    const { KullaniciAdi, AdSoyad, BlokDaire, Telefon, Sifre } = req.body;
-    try {
-        const mevcut = await Kullanici.findOne({ where: { KullaniciAdi } });
-        if (mevcut) return res.status(400).json({ mesaj: "Bu kullanıcı adı alınmış." });
-        const yeni = await Kullanici.create({ KullaniciAdi, SifreHash: Sifre || '123456', AdSoyad, BlokDaire, Telefon, Rol: 0, AktifMi: true });
-        res.json({ mesaj: "Sakin eklendi.", id: yeni.Id });
-    } catch (e) { res.status(500).json({ mesaj: "Hata oluştu." }); }
+app.get('/api/dokuman/listele', authenticateToken, async (req, res) => {
+    const dokumanlar = await Dokuman.findAll({ order: [['YuklemeTarihi', 'DESC']] });
+    res.json(dokumanlar.map(d => ({ id: d.Id, isim: d.Isim, yuklemeTarihi: new Date(d.YuklemeTarihi).toLocaleDateString('tr-TR'), erisimTipi: d.ErisimTipi, dosyaYolu: d.DosyaYolu })));
 });
 
-app.delete('/api/kullanici/sil/:id', authenticateToken, requireAdmin, async (req, res) => {
-    await Kullanici.destroy({ where: { Id: req.params.id } });
-    res.json({ mesaj: "Sakin başarıyla sistemden silindi." });
+app.delete('/api/dokuman/sil/:id', authenticateToken, requireAdmin, async (req, res) => {
+    const dokuman = await Dokuman.findByPk(req.params.id);
+    if(dokuman && dokuman.DosyaYolu) {
+        const p = path.join(__dirname, 'uploads', dokuman.DosyaYolu);
+        if(fs.existsSync(p)) fs.unlinkSync(p);
+    }
+    await Dokuman.destroy({ where: { Id: req.params.id } });
+    res.json({ mesaj: "Doküman sistemden silindi." });
 });
 
-// --- BAKIMLAR (YENİ) ---
+app.get('/api/dokuman/indir/:id', authenticateToken, async (req, res) => {
+    const dokuman = await Dokuman.findByPk(req.params.id);
+    if (!dokuman || !dokuman.DosyaYolu) return res.status(404).send("Dosya bulunamadı.");
+    const filePath = path.join(__dirname, 'uploads', dokuman.DosyaYolu);
+    res.download(filePath, dokuman.Isim);
+});
+
+// --- BAKIMLAR & TEDARİKÇİLER ---
 app.get('/api/bakim/listele', authenticateToken, async (req, res) => {
     const bakimlar = await PlanliBakim.findAll({ order: [['Tarih', 'DESC']] });
     res.json(bakimlar.map(b => ({ id: b.Id, tur: b.Tur, tarih: new Date(b.Tarih).toLocaleDateString('tr-TR'), maliyet: b.Maliyet, periyot: b.Periyot, durum: b.Durum })));
@@ -185,7 +234,6 @@ app.delete('/api/bakim/sil/:id', authenticateToken, requireAdmin, async (req, re
     res.json({ mesaj: "Bakım silindi." });
 });
 
-// --- TEDARİKÇİ / USTA (YENİ) ---
 app.get('/api/tedarikci/listele', authenticateToken, requireAdmin, async (req, res) => {
     const tedarikciler = await Tedarikci.findAll();
     res.json(tedarikciler.map(t => ({ id: t.Id, isim: t.Isim, alan: t.Alan, tel: t.Tel })));
@@ -197,27 +245,6 @@ app.post('/api/tedarikci/ekle', authenticateToken, requireAdmin, async (req, res
 app.delete('/api/tedarikci/sil/:id', authenticateToken, requireAdmin, async (req, res) => {
     await Tedarikci.destroy({ where: { Id: req.params.id } });
     res.json({ mesaj: "Tedarikçi silindi." });
-});
-
-// --- DOKÜMANLAR (YENİ) ---
-app.get('/api/dokuman/listele', authenticateToken, async (req, res) => {
-    const dokumanlar = await Dokuman.findAll({ order: [['YuklemeTarihi', 'DESC']] });
-    res.json(dokumanlar.map(d => ({ id: d.Id, isim: d.Isim, yuklemeTarihi: new Date(d.YuklemeTarihi).toLocaleDateString('tr-TR'), erisimTipi: d.ErisimTipi })));
-});
-app.post('/api/dokuman/yukle', authenticateToken, requireAdmin, async (req, res) => {
-    await Dokuman.create({ Isim: req.body.isim, ErisimTipi: req.body.erisimTipi });
-    res.json({ mesaj: "Doküman sisteme kaydedildi." });
-});
-app.delete('/api/dokuman/sil/:id', authenticateToken, requireAdmin, async (req, res) => {
-    await Dokuman.destroy({ where: { Id: req.params.id } });
-    res.json({ mesaj: "Doküman silindi." });
-});
-app.get('/api/dokuman/indir/:id', authenticateToken, async (req, res) => {
-    const dokuman = await Dokuman.findByPk(req.params.id);
-    if (!dokuman) return res.status(404).send("Doküman bulunamadı.");
-    res.setHeader('Content-disposition', `attachment; filename=${dokuman.Isim.replace(/\s+/g, '_')}.txt`);
-    res.setHeader('Content-type', 'text/plain');
-    res.send(`Bu dosya sistem tarafından dinamik olarak oluşturulmuştur.\nBelge Adı: ${dokuman.Isim}`);
 });
 
 const PORT = 5000;

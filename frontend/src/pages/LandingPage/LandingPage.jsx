@@ -5,7 +5,6 @@ import './LandingPage.css';
 const LandingPage = () => {
     const [isScrolled, setIsScrolled] = useState(false);
 
-    // Scroll kontrolü: Header arkaplan değişimi için
     useEffect(() => {
         const handleScroll = () => {
             if (window.scrollY > 50) {
@@ -16,8 +15,6 @@ const LandingPage = () => {
         };
 
         window.addEventListener('scroll', handleScroll);
-        
-        // Component unmount olduğunda (sayfa değiştiğinde) event listener'ı temizler (Memory Leak koruması)
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
@@ -26,8 +23,7 @@ const LandingPage = () => {
             <header className={`landing-header ${isScrolled ? 'scrolled' : ''}`}>
                 <div className="logo">ELİTE <span>.</span></div>
                 <div className="header-actions">
-                    <Link to="/sakin/login" className="btn-login">Sakin Girişi</Link>
-                    <Link to="/admin/login" className="btn-signup">Yönetici Paneli</Link>
+                    <Link to="/login" className="btn-signup">Sisteme Giriş Yap</Link>
                 </div>
             </header>
 
@@ -79,8 +75,7 @@ const LandingPage = () => {
                         <li><i className="fas fa-check-circle"></i> Güvenlik geçiş loglarının anlık takibi</li>
                     </ul>
                 </div>
-                <div className="split-visual">
-                </div>
+                <div className="split-visual admin-ss"></div>
             </section>
 
             <section className="split-section">
@@ -93,8 +88,7 @@ const LandingPage = () => {
                         <li><i className="fas fa-check-circle"></i> Anlık arıza bildirimleri ve çözüme dair şeffaf takip</li>
                     </ul>
                 </div>
-                <div className="split-visual" style={{ background: 'linear-gradient(135deg, var(--accent), #785a28)' }}>
-                </div>
+                <div className="split-visual user-ss"></div>
             </section>
 
             <footer className="landing-footer">

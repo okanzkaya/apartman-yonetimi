@@ -100,7 +100,9 @@ body { background-color: var(--bg); color: var(--text); overflow-x: hidden; line
 .split-list li { margin-bottom: 15px; display: flex; align-items: center; gap: 15px; font-weight: 500; color: var(--primary); }
 .split-list i { color: var(--success); font-size: 1.2rem; }
 
-.split-visual { flex: 1; height: 400px; background: linear-gradient(135deg, var(--primary), #1e293b); border-radius: 20px; position: relative; box-shadow: 0 20px 40px rgba(0,0,0,0.1); overflow: hidden; display: flex; justify-content: center; align-items: center; }
+.split-visual { flex: 1; height: 400px; border-radius: 20px; position: relative; box-shadow: 0 20px 40px rgba(0,0,0,0.1); overflow: hidden; display: flex; justify-content: center; align-items: center; background-size: cover; background-position: center; }
+.split-visual.admin-ss { background-image: url('../../assets/Screenshot 2026-04-19 184543.png'); }
+.split-visual.user-ss { background-image: url('../../assets/Screenshot 2026-04-19 184557.png'); }
 .split-visual::after { content: 'Sistem Arayüzü'; color: rgba(255,255,255,0.3); font-size: 2rem; font-weight: 700; letter-spacing: 2px; }
 
 /* Footer */

@@ -1,0 +1,70 @@
+:root { 
+    --primary-color: #0f172a; /* Daha modern bir koyu lacivert/siyah */
+    --accent-color: #b89552; 
+    --bg-light: #f8fafc; /* Daha temiz bir arka plan */
+    --text-dark: #1e293b; 
+    --text-muted: #64748b; 
+    --white: #ffffff; 
+    --border: #e2e8f0; 
+    --success: #10b981; 
+    --danger: #ef4444; 
+    --warning: #f59e0b; 
+    --info: #3b82f6; 
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.data-card, .card { 
+    background: var(--white); 
+    padding: 24px; 
+    border-radius: 16px; 
+    box-shadow: var(--shadow-sm); 
+    border: 1px solid var(--border);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    margin-bottom: 24px; 
+}
+
+.data-card:hover, .card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+/* Tabloları modernleştir */
+.data-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: 15px; }
+.data-table th { background-color: var(--bg-light); color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); }
+.data-table td { padding: 16px 15px; border-bottom: 1px solid var(--border); font-size: 0.9rem; color: var(--text-dark); vertical-align: middle; }
+.data-table tbody tr { transition: background-color 0.15s ease; }
+.data-table tbody tr:hover { background-color: #f1f5f9; }
+
+/* Butonları yumuşat */
+.btn-action, .btn { 
+    background: var(--primary-color); 
+    color: white; 
+    border: none; 
+    padding: 10px 20px; 
+    border-radius: 8px; 
+    cursor: pointer; 
+    font-weight: 500; 
+    transition: all 0.2s ease; 
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.btn-action:hover, .btn:hover { background: #1e293b; transform: translateY(-1px); }
+
+/* Inputları modernleştir */
+.form-control { 
+    width: 100%; 
+    padding: 10px 14px; 
+    border-radius: 8px; 
+    border: 1px solid var(--border); 
+    background-color: var(--white);
+    color: var(--text-dark);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease; 
+}
+.form-control:focus {
+    outline: none;
+    border-color: var(--info);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
