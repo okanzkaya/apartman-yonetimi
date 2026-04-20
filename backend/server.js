@@ -1,9 +1,11 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const Groq = require('groq-sdk'); // Groq eklendi
 const { sequelize, Kullanici, FinansHareketi, Talep, Rezervasyon, PlanliBakim, Tedarikci, Dokuman, initDB, Op } = require('./database');
 
 const app = express();
@@ -11,6 +13,9 @@ app.use(cors());
 app.use(express.json());
 
 const JWT_SECRET = 'ElitYonetimSuperGizliAnahtar1234567890!!';
+
+// Groq Client Başlatılıyor
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -56,7 +61,6 @@ app.post('/api/auth/login', async (req, res) => {
     }
     const token = jwt.sign({ id: user.Id, Rol: user.Rol }, JWT_SECRET, { expiresIn: '12h' });
     
-    // Rol bilgisi frontend'e yönlendirme için eklendi
     res.json({ token, adSoyad: user.AdSoyad, blokDaire: user.BlokDaire, id: user.Id, rol: user.Rol });
 });
 
@@ -162,13 +166,55 @@ app.put('/api/rezervasyon/durum-guncelle/:id', authenticateToken, requireAdmin, 
 // --- TALEPLER (ARIZALAR) ---
 app.post('/api/talepler/olustur', authenticateToken, async (req, res) => {
     const { Kategori, Aciklama } = req.body;
-    let aciliyet = 0, duygu = 'Nötr'; 
-    const text = Aciklama.toLowerCase();
-    if (text.includes('acil') || text.includes('tehlike') || text.includes('hemen') || text.includes('patladı')) { aciliyet = 2; duygu = 'Endişeli'; } 
-    else if (text.includes('lanet') || text.includes('yönetim') || text.includes('bıktım')) { duygu = 'Kızgın'; }
+    
+    try {
+        const prompt = `
+        Sen bir apartman yönetimi karar destek sistemisin.
+        Görev: Aşağıdaki müşteri geri bildirimini analiz et. Metindeki ironik veya çelişkili ifadeleri bağlamına göre değerlendir.
+        
+        Müşteri Metni: "${Aciklama}"
+        
+        Kategoriler: Asansör Arızası, Temizlik Şikayeti, Güvenlik / Otopark, Diğer
+        Duygu Durumları: Kızgın, Nötr, Endişeli, Memnun
+        Aciliyet Seviyeleri: 0 (Düşük), 1 (Orta), 2 (Yüksek)
+        
+        Sadece aşağıdaki formatta, geçerli bir JSON objesi döndür:
+        {"aciliyet": 1, "duygu": "Kızgın", "kategori": "Temizlik Şikayeti"}
+        `;
 
-    await Talep.create({ KullaniciId: req.user.id, Kategori, HamMetin: Aciklama, Aciliyet: aciliyet, DuyguDurumu: duygu, Durum: 0 });
-    res.json({ mesaj: "Talebiniz yönetime iletildi." });
+        const chatCompletion = await groq.chat.completions.create({
+            messages: [{ role: "user", content: prompt }],
+            model: "llama-3.3-70b-versatile", 
+            temperature: 0.1, // Tutarlı ve kesin cevaplar için düşük sıcaklık
+            response_format: { type: "json_object" } // JSON formatını doğrudan zorlar
+        });
+
+        const rawText = chatCompletion.choices[0]?.message?.content || "{}";
+        const nlpCevap = JSON.parse(rawText);
+
+        await Talep.create({ 
+            KullaniciId: req.user.id, 
+            Kategori: nlpCevap.kategori || Kategori, 
+            HamMetin: Aciklama, 
+            Aciliyet: nlpCevap.aciliyet !== undefined ? nlpCevap.aciliyet : 0, 
+            DuyguDurumu: nlpCevap.duygu || 'Nötr', 
+            Durum: 0 
+        });
+
+        res.json({ mesaj: "Talebiniz yönetime iletildi ve yapay zeka tarafından sınıflandırıldı." });
+
+    } catch (error) {
+        console.error("NLP Analiz Hatası:", error);
+        await Talep.create({ 
+            KullaniciId: req.user.id, 
+            Kategori, 
+            HamMetin: Aciklama, 
+            Aciliyet: 0, 
+            DuyguDurumu: 'Analiz Edilemedi', 
+            Durum: 0 
+        });
+        res.json({ mesaj: "Talebiniz standart olarak iletildi (NLP devre dışı)." });
+    }
 });
 
 app.get('/api/talepler/benimkiler', authenticateToken, async (req, res) => {
