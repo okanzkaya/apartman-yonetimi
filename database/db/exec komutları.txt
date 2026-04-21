@@ -1,0 +1,12 @@
+-- 2 numaralı aidatı öde
+EXEC sp_AidatOde @AidatID = 2;
+
+-- Aktif arızaları getir
+EXEC sp_AktifArizalariListele;
+
+-- Yeni bir havuz rezervasyonu denemesi yap
+EXEC sp_RezervasyonEkle 
+    @KullaniciID = 1, 
+    @AlanID = 3, 
+    @BaslangicZamani = '2026-04-21 14:00:00', 
+    @BitisZamani = '2026-04-21 15:00:00';
