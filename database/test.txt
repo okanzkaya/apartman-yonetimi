@@ -60,7 +60,7 @@ VALUES ('admin', '123456', 'Sistem Yöneticisi', 1, 1);
 
 -- Sakin Hesabı (Kullanıcı Adı: sakin, Şifre: 123456)
 INSERT INTO Kullanicilar (KullaniciAdi, SifreHash, AdSoyad, BlokDaire, Telefon, Rol, AktifMi) 
-VALUES ('sakin', '123456', 'Tuğba Yılmaz', 'A Blok D:12', '05551234567', 0, 1);
+VALUES ('sakin', '123456', 'Yılmaz', 'A Blok D:12', '05551234567', 0, 1);
 
 -- Örnek Aidat Borcu
 INSERT INTO FinansHareketleri (KullaniciId, Tarih, Donem, Aciklama, Tip, Tutar, Durum)

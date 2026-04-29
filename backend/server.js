@@ -293,7 +293,7 @@ app.delete('/api/tedarikci/sil/:id', authenticateToken, requireAdmin, async (req
     res.json({ mesaj: "Tedarikçi silindi." });
 });
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, async () => {
     await initDB();
     console.log(`Sunucu http://localhost:${PORT} adresinde çalışıyor.`);
