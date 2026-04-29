@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://proje-adi.up.railway.app/api';
+const API_BASE_URL = 'https://apartman-yonetimi-production.up.railway.app/api';
 
 export const apiCall = async (endpoint, method = 'GET', body = null, role = 'adminToken') => {
     const token = localStorage.getItem(role);
