@@ -294,6 +294,10 @@ app.delete('/api/tedarikci/sil/:id', authenticateToken, requireAdmin, async (req
 });
 
 const PORT = process.env.PORT || 5000;
+// Ana dizin için kontrol rotası
+app.get('/', (req, res) => {
+    res.send('Elite Yönetim Backend API Sorunsuz Çalışıyor 🚀');
+});
 app.listen(PORT, async () => {
     await initDB();
     console.log(`Sunucu http://localhost:${PORT} adresinde çalışıyor.`);
